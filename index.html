@@ -1,129 +1,500 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>殺戮尖塔 - 路線模擬 (由左至右)</title>
-<style>
-    body {
-        background-color: #1a222c;
-        color: white;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        margin: 0;
-        overflow: hidden;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲大廳 - 任務介面優化版</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-glow: #00aaff;
+            --secondary-glow: #ff55a3;
+            --gold-color: #ffd700;
+            --gem-color: #89d9e5;
+            --bg-color: #1a1c23;
+            --surface-color: rgba(20, 22, 28, 0.9);
+            --text-color: #f0f0f0;
+            --border-color: rgba(0, 170, 255, 0.5);
+            --font-main: 'Noto Sans TC', sans-serif;
+            --font-special: 'Chakra Petch', sans-serif;
+            --success-color: #4CAF50;
+        }
+        body {
+            font-family: var(--font-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #111;
+            color: var(--text-color);
+        }
+        .container {
+            width: 1280px;
+            height: 720px;
+            background: var(--bg-color) url('https://i.imgur.com/8z3v3m9.jpeg') center center/cover;
+            border-radius: 10px;
+            box-shadow: 0 0 40px rgba(0, 170, 255, 0.3);
+            border: 2px solid var(--border-color);
+            overflow: hidden;
+            position: relative;
+        }
+        .page {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            box-sizing: border-box;
+            background: rgba(26, 28, 35, 0.85);
+            backdrop-filter: blur(8px);
+            display: none;
+        }
+        .page.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* --- Global HUD Elements --- */
+        #main-hud {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 80px;
+            z-index: 200;
+            display: none;
+        }
+        .player-profile { position: absolute; top: 20px; left: 20px; display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.4); padding: 8px 15px; border-radius: 25px; cursor: pointer; transition: background-color 0.2s; }
+        .player-profile:hover { background-color: rgba(0, 170, 255, 0.2); }
+        .player-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary-glow); background-color: #fff; }
+        .player-name { color: var(--text-color); font-weight: 700; font-size: 16px; }
+        
+        .top-center-nav { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 15px; border: 1px solid var(--border-color); }
+        .top-center-nav .icon-button { background: transparent; border: none; color: var(--text-color); width: 50px; height: 50px; border-radius: 10px; font-size: 24px; cursor: pointer; transition: all 0.2s; display: grid; place-items: center; }
+        .top-center-nav .icon-button.active, .top-center-nav .icon-button:hover { background: var(--primary-glow); color: #fff; box-shadow: 0 0 15px var(--primary-glow); }
+        
+        .top-right-cluster { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
+        .currency-display { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.4); padding: 8px 15px; border-radius: 20px; border: 1px solid var(--border-color); }
+        .currency-icon { font-size: 20px; }
+        .currency-amount { font-family: var(--font-special); font-size: 18px; color: var(--text-color); min-width: 70px; text-align: right; }
+        .back-button { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 10px 40px; font-size: 20px; background: #444; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-family: var(--font-special); z-index: 102; transition: background 0.2s;}
+        .back-button:hover { background: #666; }
 
-    .map-container {
-        display: flex;
-        flex-direction: row; /* 主要方向改為水平 */
-        align-items: center;
-        gap: 100px; /* 每一層節點的水平間距 */
-        padding: 40px;
-    }
+        /* --- Standard Content Page --- */
+        .standard-page-layout { padding: 95px 40px 40px 40px; box-sizing: border-box; height: 100%; display: flex; flex-direction: column; }
+        .standard-page-header { margin:0; padding-bottom: 15px; font-family: var(--font-special); font-size: 32px; color: var(--text-color); text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .main-content-area { flex-grow: 1; min-height: 0; background-color: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 20px; overflow-y: auto; }
 
-    .map-layer {
-        display: flex;
-        flex-direction: column; /* 層內節點垂直排列 */
-        justify-content: center;
-        gap: 60px; /* 同一層節點的垂直間距 */
-    }
+        /* --- Pass Page Specific --- */
+        .pass-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 20px 0;
+            overflow-x: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-glow) transparent;
+        }
+        .pass-container::-webkit-scrollbar { height: 6px; }
+        .pass-container::-webkit-scrollbar-thumb { background: var(--primary-glow); border-radius: 10px; }
+        
+        .pass-track {
+            display: flex;
+            gap: 20px;
+            padding: 10px 0;
+            min-width: max-content;
+        }
+        .pass-level-column {
+            width: 120px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+        .pass-level-tag {
+            font-family: var(--font-special);
+            font-size: 18px;
+            color: #fff;
+            background: #333;
+            width: 40px;
+            height: 40px;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+            z-index: 10;
+        }
+        .pass-level-tag.reached {
+            background: var(--primary-glow);
+            border-color: #fff;
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+        .reward-item {
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .reward-item.premium { border-color: var(--secondary-glow); }
+        .reward-item.claimed::after {
+            content: "✓";
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            color: var(--success-color);
+            font-size: 40px;
+            display: grid;
+            place-items: center;
+            border-radius: 10px;
+            z-index: 5;
+        }
+        .reward-item.locked {
+            filter: grayscale(1) opacity(0.5);
+            cursor: not-allowed;
+        }
+        .reward-item:not(.locked):not(.claimed):hover {
+            transform: translateY(-5px);
+            background: rgba(255,255,255,0.15);
+            border-color: var(--primary-glow);
+        }
+        .reward-icon { font-size: 30px; margin-bottom: 5px; }
+        .reward-name { font-size: 11px; text-align: center; color: #ccc; }
+        
+        .track-label {
+            font-family: var(--font-special);
+            font-size: 14px;
+            color: var(--secondary-glow);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: sticky;
+            left: 0;
+            background: rgba(26, 28, 35, 0.9);
+            padding: 5px 10px;
+            border-radius: 4px;
+            z-index: 20;
+        }
 
-    .node {
-        width: 100px;
-        height: 100px;
-        border: 4px solid #ecf0f1;
-        border-radius: 50%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-size: 1.2em;
-        font-weight: bold;
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-        position: relative;
-        text-shadow: 2px 2px 4px #000;
-    }
+        /* --- Other Styles --- */
+        #lobby-page .page-header { position: absolute; top: 80px; left: 40px; margin:0; font-family: var(--font-special); font-size: 32px; color: var(--text-color); opacity: 0.7; }
+        .bottom-right-play { position: absolute; bottom: 50px; right: 40px; z-index: 102; }
+        .play-button-rect { width: 180px; height: 70px; border-radius: 15px; border: 3px solid var(--secondary-glow); background: linear-gradient(45deg, #d44286, #8e31c6); color: white; font-family: var(--font-main); font-weight: 700; font-size: 28px; cursor: pointer; display: grid; place-items: center; text-shadow: 0 0 10px rgba(0,0,0,0.5); box-shadow: 0 0 25px var(--secondary-glow); transition: transform 0.2s; }
+        .play-button-rect:hover { transform: scale(1.05); }
 
-    .node:hover {
-        transform: scale(1.15);
-        box-shadow: 0 0 25px #f1c40f;
-    }
-    
-    /* --- 事件類型 --- */
-    .event-start {
-        background-color: #95a5a6;
-        border-color: #bdc3c7;
-    }
-    
-    .event-battle { /* 對戰 */
-        background-color: #c0392b;
-        border-color: #e74c3c;
-    }
+        .quest-list { display: flex; flex-direction: column; gap: 15px; }
+        .quest-card { background: rgba(255,255,255,0.05); border-left: 4px solid var(--primary-glow); border-radius: 4px; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; transition: background 0.3s; }
+        .quest-card:hover { background: rgba(255,255,255,0.1); }
+        .quest-info { flex-grow: 1; }
+        .quest-title { font-size: 18px; font-weight: 700; margin-bottom: 5px; }
+        .quest-reward { color: var(--gold-color); font-family: var(--font-special); font-size: 14px; }
+        .quest-progress-container { width: 200px; margin-right: 30px; }
+        .progress-bar-bg { background: rgba(0,0,0,0.5); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 8px; border: 1px solid rgba(255,255,255,0.1); }
+        .progress-bar-fill { background: linear-gradient(90deg, var(--primary-glow), #8e31c6); height: 100%; border-radius: 4px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .progress-text { font-size: 12px; text-align: right; color: #aaa; margin-top: 4px; font-family: var(--font-special); }
+        .claim-button { padding: 10px 25px; border-radius: 6px; border: none; font-weight: 700; cursor: pointer; font-family: var(--font-main); min-width: 100px; transition: all 0.2s; }
+        .claim-button.ready { background: var(--success-color); color: white; box-shadow: 0 0 15px var(--success-color); }
+        .claim-button.ready:hover { transform: scale(1.05); filter: brightness(1.1); }
+        .claim-button.not-ready { background: #333; color: #777; cursor: not-allowed; }
+        .claim-button.claimed { background: #222; color: #555; cursor: default; border: 1px solid #444; }
 
-    .event-shop { /* 商店 */
-        background-color: #27ae60;
-        border-color: #2ecc71;
-    }
+        .hero-grid-container { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; }
+        .hero-avatar-box { background-color: rgba(0,0,0,0.4); border: 2px solid var(--border-color); border-radius: 10px; aspect-ratio: 4 / 3; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; font-family: var(--font-main); color: #ccc; }
+        .hero-avatar-box:hover { border-color: var(--primary-glow); color: var(--primary-glow); transform: translateY(-3px); background-color: rgba(0, 170, 255, 0.15); }
 
-    .event-random { /* 隨機 */
-        background-color: #8e44ad;
-        border-color: #9b59b6;
-    }
+        .community-grid { display: grid; grid-template-columns: repeat(2, 220px); gap: 25px; justify-content: center; align-content: center; height: 100%; }
+        .community-btn { width: 100%; height: 120px; background-color: rgba(0,0,0,0.4); border: 2px solid var(--border-color); border-radius: 15px; color: var(--text-color); font-size: 20px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+        .community-btn:hover { border-color: var(--primary-glow); background-color: rgba(0, 170, 255, 0.1); transform: scale(1.05); }
 
-    .event-boss { /* BOSS */
-        background-color: #34495e;
-        border-color: #e74c3c;
-        transform: scale(1.3); /* Boss 節點更大 */
-        box-shadow: 0 0 30px #c0392b;
-    }
-    .event-boss:hover {
-        transform: scale(1.4);
-        box-shadow: 0 0 40px red;
-    }
-
-</style>
+        #match-lobby-page { justify-content: center; align-items: center; padding: 0; }
+        .horizontal-scroll-container { display: flex; gap: 30px; overflow-x: auto; padding: 30px 60px; width: 100%; box-sizing: border-box; scroll-behavior: smooth; }
+        .mode-button { flex: 0 0 240px; height: 480px; border-radius: 15px; border: 2px solid var(--border-color); background-size: cover; background-position: center; cursor: pointer; transition: all 0.3s ease; display: flex; flex-direction: column; justify-content: flex-end; padding: 25px; position: relative; }
+        .mode-button:hover { transform: translateY(-10px) scale(1.03); box-shadow: 0 10px 30px rgba(0, 170, 255, 0.5); border-color: var(--primary-glow); }
+        .mode-button::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, rgba(0,0,0,0.95) 25%, transparent 70%); border-radius: 13px; }
+        .mode-button-title { font-family: var(--font-main); font-size: 28px; font-weight: 700; color: white; position: relative; text-shadow: 0 2px 5px #000; }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <!-- Global HUD -->
+        <div id="main-hud">
+            <div class="player-profile" onclick="goToPage('player-info-page')">
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2FkYmFjNyI+PHBhdGggZD0iTTEyIDJDMiAyIDIgMTIgMiAxMnMxMCAxMCAxMCAxMHMxMC0xMCAxMC0xMFMyMiAyIDEyIDJ6bTAgMzhjLTIuMjEgMC00LTEuNzktNC00czEuNzktNCA0LTRzNCAxLjc5IDQgNHMtMS43OSA0LTQgNHptOC45NCAxMGMtLjczLTIuNTgtMi44MS00LjU1LTUuMzktNS4wMmMxLjQyLS45MiAyLjM5LTIuNDkgMi4zOS00LjI5YzAtMi43Ni0yLjI0LTUtNS01cy01IDIuMjQtNSA1YzAgMS44LjI2IDMuMzcgMi4zOSA0LjI5Yy0yLjU4LjQ3LTQuNjYgMi40NC01LjM5IDUuMDJjLS4wNy4yMy0uMTIuNDgtLjE1Ljc0YzAtLjAyIDAtLjA0IDAtLjA2YzAtNC40MSAzLjU5LTggOC04czggMy41OSA4IDhjMCAuMDItMCAuMDQgMCwuMDZjLS4wMy0uMjYtLjA4LS41MS0uMTUtLjc0eiIvPjwvc3ZnPg==" alt="avatar" class="player-avatar">
+                <span class="player-name">Zero13</span>
+            </div>
+            
+            <div class="top-center-nav">
+                <button class="icon-button active" title="大廳" onclick="goToPage('lobby-page')">🏠</button>
+                <button class="icon-button" title="武將" onclick="goToPage('hero-roster-page')">⚔️</button>
+                <button class="icon-button" title="任務" onclick="goToPage('quest-page')">📋</button>
+                <button class="icon-button" title="通行證" onclick="goToPage('pass-page')">📜</button>
+                <button class="icon-button" title="商城" onclick="goToPage('placeholder-page', 'lobby-page', '商城')">🛒</button>
+                <button class="icon-button" title="社群" onclick="goToPage('community-page')">🌐</button>
+                <button class="icon-button" title="設定" onclick="goToPage('placeholder-page', 'lobby-page', '設定')">⚙️</button>
+            </div>
+            
+            <div class="top-right-cluster">
+                <div class="currency-display"><span class="currency-icon" style="color: var(--gold-color);">💰</span><span class="currency-amount" id="gold-amount">999,999</span></div>
+                <div class="currency-display"><span class="currency-icon" style="color: var(--gem-color);">💎</span><span class="currency-amount" id="gem-amount">88,888</span></div>
+            </div>
+        </div>
 
-<div class="map-container">
-    <!-- 第 1 層 -->
-    <div class="map-layer">
-        <div class="node event-start" data-event-type="起始">起始</div>
+        <!-- Pages -->
+        <div id="lobby-page" class="page active">
+            <h2 class="page-header">遊戲大廳</h2>
+            <div class="bottom-right-play"><button class="play-button-rect" onclick="goToPage('match-lobby-page')">對戰</button></div>
+        </div>
+
+        <!-- 對戰模式選擇頁面 -->
+        <div id="match-lobby-page" class="page">
+            <div class="horizontal-scroll-container">
+                <div class="mode-button" style="background-image: url(https://i.imgur.com/wVf5a7g.jpeg);"><h3 class="mode-button-title">線上</h3></div>
+                <div class="mode-button" style="background-image: url(https://i.imgur.com/Y1bA7Yt.jpeg);"><h3 class="mode-button-title">Roguelike</h3></div>
+                <div class="mode-button" style="background-image: url(https://i.imgur.com/S5TfM6f.jpeg);"><h3 class="mode-button-title">單人</h3></div>
+                <div class="mode-button" style="background-image: url(https://i.imgur.com/7gK7j8h.jpeg);"><h3 class="mode-button-title">雙人</h3></div>
+                <div class="mode-button" style="background-image: url(https://i.imgur.com/OqDkP5t.jpeg);"><h3 class="mode-button-title">練習</h3></div>
+            </div>
+            <button class="back-button" onclick="goToPage('lobby-page')">返回大廳</button>
+        </div>
+
+        <!-- 武將分頁 -->
+        <div id="hero-roster-page" class="page">
+            <div class="standard-page-layout">
+                <h2 class="standard-page-header">武將一覽</h2>
+                <div class="main-content-area">
+                    <div class="hero-grid-container" id="hero-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 任務分頁 -->
+        <div id="quest-page" class="page">
+            <div class="standard-page-layout">
+                <h2 class="standard-page-header">任務中心</h2>
+                <div class="main-content-area">
+                    <div class="quest-list" id="quest-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 通行證分頁 -->
+        <div id="pass-page" class="page">
+            <div class="standard-page-layout">
+                <h2 class="standard-page-header">賽季通行證 <span style="font-size: 16px; color: var(--secondary-glow);">LV. 8</span></h2>
+                <div class="main-content-area" style="overflow: hidden;">
+                    <div class="pass-container" id="pass-scroller">
+                        <div class="track-label">高級獎勵 (PREMIUM)</div>
+                        <div class="pass-track" id="premium-track"></div>
+                        <div class="pass-track" id="level-track"></div>
+                        <div class="track-label" style="color: #ccc;">免費獎勵 (FREE)</div>
+                        <div class="pass-track" id="free-track"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 社群分頁 -->
+        <div id="community-page" class="page">
+             <div class="standard-page-layout">
+                <h2 class="standard-page-header">社群互動</h2>
+                <div class="main-content-area">
+                    <div class="community-grid">
+                        <button class="community-btn" onclick="goToPage('placeholder-page', 'community-page', '好友系統')"><span>👥</span> 好友</button>
+                        <button class="community-btn" onclick="goToPage('placeholder-page', 'community-page', '家族大廳')"><span>🏠</span> 家族</button>
+                        <button class="community-btn" onclick="goToPage('placeholder-page', 'community-page', '對戰重播系統')"><span>🎥</span> 對戰重播</button>
+                        <button class="community-btn" onclick="goToPage('placeholder-page', 'community-page', '排行榜')"><span>🏆</span> 排行榜</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="player-info-page" class="page">
+            <div class="standard-page-layout">
+                <h2 class="standard-page-header">玩家資訊</h2>
+                <div class="main-content-area">
+                    <div style="padding: 20px;">
+                        <h3>Zero13</h3>
+                        <p>ID: 10000001</p>
+                        <p>等級: 60</p>
+                    </div>
+                </div>
+            </div>
+            <button class="back-button" onclick="goToPage('lobby-page')">返回大廳</button>
+        </div>
+
+        <div id="placeholder-page" class="page">
+            <div class="standard-page-layout">
+                <h2 id="placeholder-title" class="standard-page-header"></h2>
+                <div class="main-content-area">
+                    <p style="text-align: center; font-size: 24px; margin-top: 100px; color: #888;">此功能正在維護中，敬請期待。</p>
+                </div>
+            </div>
+            <button id="placeholder-back-button" class="back-button">返回</button>
+        </div>
     </div>
 
-    <!-- 第 2 層 -->
-    <div class="map-layer">
-        <div class="node event-battle" data-event-type="對戰">對戰</div>
-        <div class="node event-random" data-event-type="隨機">隨機</div>
-    </div>
-    
-    <!-- 第 3 層 -->
-    <div class="map-layer">
-        <div class="node event-battle" data-event-type="對戰">對戰</div>
-        <div class="node event-shop" data-event-type="商店">商店</div>
-        <div class="node event-battle" data-event-type="對戰">對戰</div>
-    </div>
+    <script>
+        // 武將名單更新
+        const heroList = [
+            "關羽", "呂布", "荀彧", "貂蟬", 
+            "董卓", "諸葛亮", "張飛", "趙雲", 
+            "夏侯惇", "孫堅", "孫尚香", "夏侯淵"
+        ];
 
-    <!-- 第 4 層 -->
-    <div class="map-layer">
-        <div class="node event-random" data-event-type="隨機">隨機</div>
-        <div class="node event-battle" data-event-type="對戰">對戰</div>
-    </div>
+        // 通行證數據
+        const currentPassLevel = 8;
+        const passRewards = {
+            free: Array.from({length: 15}, (_, i) => ({
+                level: i + 1,
+                name: i % 3 === 0 ? '金幣 x100' : '經驗書',
+                icon: i % 3 === 0 ? '💰' : '📖',
+                claimed: i < 5 
+            })),
+            premium: Array.from({length: 15}, (_, i) => ({
+                level: i + 1,
+                name: (i+1) % 5 === 0 ? '稀有皮膚' : '鑽石 x50',
+                icon: (i+1) % 5 === 0 ? '👕' : '💎',
+                claimed: i < 3 
+            }))
+        };
 
-    <!-- 第 5 層 -->
-    <div class="map-layer">
-        <div class="node event-shop" data-event-type="商店">商店</div>
-    </div>
+        const quests = [
+            { id: 1, title: '每日登入', reward: '💰 500', progress: 1, total: 1, claimed: true },
+            { id: 2, title: '完成三場對戰', reward: '💎 50', progress: 1, total: 3, claimed: false },
+            { id: 3, title: '擊敗 10 名敵人', reward: '💰 1000', progress: 10, total: 10, claimed: false },
+            { id: 4, title: '使用大絕招 5 次', reward: '💎 20', progress: 2, total: 5, claimed: false }
+        ];
 
-    <!-- 第 6 層：BOSS -->
-    <div class="map-layer">
-        <div class="node event-boss" data-event-type="Boss">Boss</div>
-    </div>
-</div>
+        function goToPage(pageId, backTargetId, placeholderTitle) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            const targetPage = document.getElementById(pageId);
+            if(targetPage) targetPage.classList.add('active');
 
+            const hudPages = ['lobby-page', 'hero-roster-page', 'community-page', 'quest-page', 'pass-page'];
+            const isLobbyPlaceholder = pageId === 'placeholder-page' && backTargetId === 'lobby-page';
+            const showHud = (hudPages.includes(pageId) || isLobbyPlaceholder);
+            document.getElementById('main-hud').style.display = showHud ? 'block' : 'none';
+
+            const navButtons = document.querySelectorAll('.top-center-nav .icon-button');
+            navButtons.forEach(btn => {
+                const title = btn.getAttribute('title');
+                let isActive = 
+                    (pageId === 'lobby-page' && title === '大廳') ||
+                    (pageId === 'hero-roster-page' && title === '武將') ||
+                    (pageId === 'quest-page' && title === '任務') ||
+                    (pageId === 'pass-page' && title === '通行證') ||
+                    (pageId === 'community-page' && title === '社群') ||
+                    (isLobbyPlaceholder && placeholderTitle === title);
+                btn.classList.toggle('active', isActive);
+            });
+
+            if (pageId === 'placeholder-page') {
+                document.getElementById('placeholder-title').innerText = placeholderTitle || "功能";
+                const finalBackTarget = backTargetId || 'lobby-page';
+                document.getElementById('placeholder-back-button').setAttribute('onclick', `goToPage('${finalBackTarget}')`);
+            }
+
+            if (pageId === 'quest-page') renderQuests();
+            if (pageId === 'pass-page') renderPass();
+        }
+
+        function renderPass() {
+            const premiumCont = document.getElementById('premium-track');
+            const freeCont = document.getElementById('free-track');
+            const levelCont = document.getElementById('level-track');
+            if(!premiumCont) return;
+
+            const createRewardHtml = (item, type) => {
+                const isLocked = item.level > currentPassLevel;
+                const statusClass = item.claimed ? 'claimed' : (isLocked ? 'locked' : '');
+                const premiumClass = type === 'premium' ? 'premium' : '';
+                return `
+                    <div class="pass-level-column">
+                        <div class="reward-item ${statusClass} ${premiumClass}" onclick="claimPassReward('${type}', ${item.level}, this)">
+                            <span class="reward-icon">${item.icon}</span>
+                            <span class="reward-name">${item.name}</span>
+                        </div>
+                    </div>
+                `;
+            };
+
+            premiumCont.innerHTML = passRewards.premium.map(item => createRewardHtml(item, 'premium')).join('');
+            freeCont.innerHTML = passRewards.free.map(item => createRewardHtml(item, 'free')).join('');
+            levelCont.innerHTML = Array.from({length: 15}, (_, i) => `
+                <div class="pass-level-column">
+                    <div class="pass-level-tag ${i + 1 <= currentPassLevel ? 'reached' : ''}">${i + 1}</div>
+                </div>
+            `).join('');
+            
+            const scroller = document.getElementById('pass-scroller');
+            if (scroller && currentPassLevel > 4) {
+                scroller.scrollLeft = (currentPassLevel - 3) * 140;
+            }
+        }
+
+        function claimPassReward(type, level, element) {
+            if (level > currentPassLevel || element.classList.contains('claimed')) return;
+            const reward = passRewards[type].find(r => r.level === level);
+            if (reward) {
+                reward.claimed = true;
+                element.classList.add('claimed');
+            }
+        }
+
+        function renderQuests() {
+            const container = document.getElementById('quest-container');
+            if(!container) return;
+            container.innerHTML = quests.map(q => {
+                const percent = Math.min((q.progress / q.total) * 100, 100);
+                const isReady = q.progress >= q.total && !q.claimed;
+                let btnLabel = q.claimed ? '已領取' : (isReady ? '領取獎勵' : '進行中');
+                let btnClass = `claim-button ${q.claimed ? 'claimed' : (isReady ? 'ready' : 'not-ready')}`;
+                return `
+                    <div class="quest-card">
+                        <div class="quest-info">
+                            <div class="quest-title">${q.title}</div>
+                            <div class="quest-reward">獎勵: ${q.reward}</div>
+                        </div>
+                        <div class="quest-progress-container">
+                            <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${percent}%"></div></div>
+                            <div class="progress-text">${q.progress} / ${q.total}</div>
+                        </div>
+                        <button class="${btnClass}" ${isReady ? `onclick="claimReward(${q.id}, this)"` : ''}>${btnLabel}</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function claimReward(id, btnElement) {
+            const quest = quests.find(q => q.id === id);
+            if (quest && !quest.claimed) {
+                quest.claimed = true;
+                btnElement.innerText = "已領取";
+                btnElement.className = "claim-button claimed";
+                btnElement.onclick = null;
+            }
+        }
+
+        function generateHeroGrid() {
+            const container = document.getElementById('hero-grid');
+            if (!container) return;
+            let html = '';
+            heroList.forEach(name => {
+                html += `<div class="hero-avatar-box" onclick="goToPage('placeholder-page', 'hero-roster-page', '${name} 資訊')">${name}</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('main-hud').style.display = 'block';
+            generateHeroGrid();
+        });
+    </script>
 </body>
 </html>
