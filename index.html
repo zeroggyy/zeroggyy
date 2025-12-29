@@ -1,300 +1,129 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>遊戲大廳 - 專業佈局原型 (簡化對戰介面)</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-glow: #00aaff;
-            --secondary-glow: #ff55a3;
-            --gold-color: #ffd700;
-            --gem-color: #89d9e5;
-            --bg-color: #1a1c23;
-            --surface-color: rgba(20, 22, 28, 0.9);
-            --text-color: #f0f0f0;
-            --border-color: rgba(0, 170, 255, 0.5);
-            --font-main: 'Noto Sans TC', sans-serif;
-            --font-special: 'Chakra Petch', sans-serif;
-        }
-        body {
-            font-family: var(--font-main);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #111;
-        }
-        .container {
-            width: 1280px;
-            height: 720px;
-            background: var(--bg-color) url('https://i.imgur.com/8z3v3m9.jpeg') center center/cover;
-            border-radius: 10px;
-            box-shadow: 0 0 40px rgba(0, 170, 255, 0.3);
-            border: 2px solid var(--border-color);
-            overflow: hidden;
-            position: relative;
-        }
-        .page {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            box-sizing: border-box;
-            background: rgba(26, 28, 35, 0.85);
-            backdrop-filter: blur(8px);
-            display: none;
-        }
-        .page.active {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        /* --- Global HUD Elements --- */
-        #main-hud {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%;
-            height: 80px;
-            z-index: 200;
-            display: none;
-        }
-        .player-profile { position: absolute; top: 20px; left: 20px; display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.4); padding: 8px 15px; border-radius: 25px; cursor: pointer; transition: background-color 0.2s; }
-        .player-profile:hover { background-color: rgba(0, 170, 255, 0.2); }
-        .player-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary-glow); background-color: #fff; }
-        .player-name { color: var(--text-color); font-weight: 700; font-size: 16px; }
-        .top-center-nav { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 15px; border: 1px solid var(--border-color); }
-        .top-center-nav .icon-button { background: transparent; border: none; color: var(--text-color); width: 50px; height: 50px; border-radius: 10px; font-size: 24px; cursor: pointer; transition: all 0.2s; display: grid; place-items: center; }
-        .top-center-nav .icon-button.active, .top-center-nav .icon-button:hover { background: var(--primary-glow); color: #fff; box-shadow: 0 0 15px var(--primary-glow); }
-        .top-right-cluster { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 10px; }
-        .currency-display { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.4); padding: 8px 15px; border-radius: 20px; border: 1px solid var(--border-color); }
-        .currency-icon { font-size: 20px; }
-        .currency-amount { font-family: var(--font-special); font-size: 18px; color: var(--text-color); min-width: 70px; text-align: right; }
-        .back-button { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 10px 40px; font-size: 20px; background: #777; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-family: var(--font-special); z-index: 102; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>殺戮尖塔 - 路線模擬 (由左至右)</title>
+<style>
+    body {
+        background-color: #1a222c;
+        color: white;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        overflow: hidden;
+    }
 
-        /* --- Layout 1: Lobby --- */
-        #lobby-page .page-header { position: absolute; top: 80px; left: 40px; margin:0; font-family: var(--font-special); font-size: 32px; color: var(--text-color); opacity: 0.7; }
-        .bottom-right-play { position: absolute; bottom: 50px; right: 40px; z-index: 102; }
-        .play-button-rect { width: 180px; height: 70px; border-radius: 15px; border: 3px solid var(--secondary-glow); background: linear-gradient(45deg, #d44286, #8e31c6); color: white; font-family: var(--font-main); font-weight: 700; font-size: 28px; cursor: pointer; display: grid; place-items: center; text-shadow: 0 0 10px rgba(0,0,0,0.5); box-shadow: 0 0 25px var(--secondary-glow); }
-        
-        /* --- Layout 2: Standard Content Page --- */
-        .standard-page-layout { padding: 95px 40px 80px 40px; box-sizing: border-box; height: 100%; display: flex; flex-direction: column; }
-        .standard-page-header { margin:0; padding-bottom: 15px; font-family: var(--font-special); font-size: 32px; color: var(--text-color); text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-        .main-content-area { flex-grow: 1; min-height: 0; background-color: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 20px; overflow-y: auto; }
-        .hero-grid-container { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; box-sizing: border-box; }
-        .hero-avatar-box { background-color: rgba(0,0,0,0.4); border: 2px solid var(--border-color); border-radius: 10px; aspect-ratio: 4 / 3; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; font-size: 16px; font-family: var(--font-special); color: #888; }
-        .community-button-grid { display: flex; flex-direction: row; gap: 20px; align-items: center; justify-content: center; height: 100%;}
-        .community-button { flex: 1; max-width: 250px; padding: 30px; font-size: 22px; font-weight: 700; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 10px; color: var(--text-color); cursor: pointer; transition: background-color 0.2s; text-align: center; }
-        .placeholder-text { color: #aaa; text-align: center; font-size: 24px; height: 100%; display: flex; align-items: center; justify-content: center;}
-        .player-info-grid { display: grid; grid-template-columns: 300px 1fr; gap: 40px; height: 100%; }
-        .player-info-left { display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .large-avatar { width: 220px; height: 220px; border-radius: 50%; border: 4px solid var(--primary-glow); background-color: #fff; margin-top: 20px; }
-        .profile-name { font-size: 28px; font-weight: 700; margin: 0; }
-        .profile-id { font-size: 16px; color: #aaa; margin: -10px 0 10px 0; }
-        .profile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; }
-        .stat-item { background: rgba(0,0,0,0.4); border-radius: 8px; padding: 10px; text-align: center; }
-        .stat-label { font-size: 14px; color: #aaa; }
-        .stat-value { font-size: 20px; font-weight: 700; font-family: var(--font-special); }
-        .player-info-right { display: flex; flex-direction: column; gap: 15px; }
-        .detail-item { background: rgba(0,0,0,0.2); padding: 15px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .detail-label { font-size: 16px; font-weight: 700; color: #ccc; }
-        .detail-value { font-size: 18px; font-family: var(--font-special); }
+    .map-container {
+        display: flex;
+        flex-direction: row; /* 主要方向改為水平 */
+        align-items: center;
+        gap: 100px; /* 每一層節點的水平間距 */
+        padding: 40px;
+    }
 
-        /* --- Layout 3: Match Lobby (MODIFIED) --- */
-        #match-lobby-page {
-            justify-content: center;
-            align-items: center;
-            padding: 0;
-        }
-        .horizontal-scroll-container { 
-            display: flex; 
-            gap: 30px; 
-            overflow-x: auto; 
-            padding: 30px 60px; 
-            width: 100%; 
-            box-sizing: border-box;
-        }
-        .horizontal-scroll-container::-webkit-scrollbar { height: 12px; }
-        .horizontal-scroll-container::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
-        .horizontal-scroll-container::-webkit-scrollbar-thumb { background: var(--primary-glow); border-radius: 10px; }
-        .mode-button { 
-            flex: 0 0 240px;
-            height: 480px;
-            border-radius: 15px; 
-            border: 2px solid var(--border-color); 
-            background-size: cover; 
-            background-position: center; 
-            cursor: pointer; 
-            transition: all 0.3s ease; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: flex-end; 
-            padding: 25px; 
-            position: relative; 
-        }
-        .mode-button:hover { 
-            transform: translateY(-10px) scale(1.03); 
-            box-shadow: 0 10px 30px rgba(0, 170, 255, 0.5); 
-        }
-        .mode-button::before { 
-            content: ''; 
-            position: absolute; 
-            top: 0; left: 0; right: 0; bottom: 0; 
-            background: linear-gradient(to top, rgba(0,0,0,0.95) 25%, transparent 70%); 
-            border-radius: 13px; 
-        }
-        .mode-button-title { 
-            font-family: var(--font-main); 
-            font-size: 28px; 
-            font-weight: 700; 
-            color: white; 
-            position: relative; 
-            text-shadow: 0 2px 5px #000; 
-        }
-    </style>
+    .map-layer {
+        display: flex;
+        flex-direction: column; /* 層內節點垂直排列 */
+        justify-content: center;
+        gap: 60px; /* 同一層節點的垂直間距 */
+    }
+
+    .node {
+        width: 100px;
+        height: 100px;
+        border: 4px solid #ecf0f1;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.2em;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        position: relative;
+        text-shadow: 2px 2px 4px #000;
+    }
+
+    .node:hover {
+        transform: scale(1.15);
+        box-shadow: 0 0 25px #f1c40f;
+    }
+    
+    /* --- 事件類型 --- */
+    .event-start {
+        background-color: #95a5a6;
+        border-color: #bdc3c7;
+    }
+    
+    .event-battle { /* 對戰 */
+        background-color: #c0392b;
+        border-color: #e74c3c;
+    }
+
+    .event-shop { /* 商店 */
+        background-color: #27ae60;
+        border-color: #2ecc71;
+    }
+
+    .event-random { /* 隨機 */
+        background-color: #8e44ad;
+        border-color: #9b59b6;
+    }
+
+    .event-boss { /* BOSS */
+        background-color: #34495e;
+        border-color: #e74c3c;
+        transform: scale(1.3); /* Boss 節點更大 */
+        box-shadow: 0 0 30px #c0392b;
+    }
+    .event-boss:hover {
+        transform: scale(1.4);
+        box-shadow: 0 0 40px red;
+    }
+
+</style>
 </head>
 <body>
-    <div class="container">
-        <!-- Global HUD -->
-        <div id="main-hud">
-            <div class="player-profile" onclick="goToPage('player-info-page')"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2FkYmFjNyI+PHBhdGggZD0iTTEyIDEyYyIuODEgMCAxLjUtLjMzIDIuMDUtLjg4cy44OC0xLjI0Ljg4LTIuMDVjMC0uODEgLS4zMy0xLjUgLS44OC0yLjA1cy0xLjI0LS44OC0yLjA1LS44OEMxMC4zOSA1LjY1IDguNSA3LjU0IDguNSA5LjVsMS41IDEuNUMxMCAxMCAxMSAxMCAxMiAxMnptMCAyYy0xLjc5IDAtMy4zMy0uNzEtNC40NS0xLjg4QzYuNDEgMTEuMDQgNS41IDEwLjA5IDUuNSA4LjVjMC0uNDEuMDgtLjc5LjIzLTEuMTRsLTEuMDYtMS4wNkM0LjI2IDcgNCA3LjY5IDQgOC41YzAgMS43OS43MSAzLjMzIDEuODggNC40NVM4LjA5IDE1IDkgMTVjLjQxIDAgLjc5LS4wOCAxLjE0LS4yM2wxLjA2IDEuMDZjLS40NS4xNS0uNzQuMjMtMS4xNC4yM3ptNi4yNS0xLjg4QzYuNDEgMTEuMDQgNS41IDEwLjA5IDUuNSA4LjVjMC0uNDEuMDgtLjc5LjIzLTEuMTRsLTEuMDYtMS4wNkM0LjI2IDcgNCA3LjY5IDQgOC41YzAgMS43OS43MSAzLjMzIDEuODggNC40NVM4LjA5IDE1IDkgMTVjLjQxIDAgLjc5LS4wOCAxLjE0LS4yM2wxLjA2IDEuMDZjLS40NS4xNS0uNzQuMjMtMS4xNC4yM3ptNi41LTQuNWMwIC44Mi0uMzMgMS41MS0uODggMi4wNVMxNi4zOSA5LjY1IDE1LjU4IDkuNjVjLS4yMyAwIC0uNDUtLjA0LS42Ni0uMTJsLTEuNS0xLjVjLjAyLS4wMi4wNC0uMDMuMDYtLjA1cy4wMy0uMDQuMDUtLjA2Yy41NS0uNTUgLjg4LTEuMjQuODgtMi4wNWMwLS44MS0uMzMtMS41LS44OC0yLjA1cy0xLjI0LS44OC0yLjA1LS44OEMxMC43OCA0LjY1IDEwLjU2IDQuNjkgMTAuMzUgNC43N2wtMS41LTEuNWMuNTQtLjIgMS4wOC0uMyAyLjE1LS4zIDEuNzkgMCAzLjMzLjcxIDQuNDUgMS44OEMyMC41OSA3LjQ2IDIxLjUgOC45MSAyMS41IDEwLjV6bS01LjYyIDEuMTJsMS41IDEuNWMtLjIgLjU0LS4zIDEuMDgtLjMgMi4xNWMwIDEuNzkuNzEgMy4zMyAxLjg4IDQuNDVTMTYuOTEgMjEgMTguNSAyMWMxLjc5IDAgMy4zMy0uNzEgNC40NS0xLjg4QzIzLjU5IDE4LjA0IDI0LjUgMTcuMDkgMjQuNSAxNS41YzAtLjQxLS4wOC0uNzktLjIzLTEuMTRsLTEuMDYtMS4wNmMuNDUuMTUuNzQuMjMgMS4xNC4yMy44MSAwIDEuNS0uMzMgMi4wNS0uODhzLjg4LTEuMjQuODgtMi4wNWMwLS4yMy0uMDQtLjQ1LS4xMi0uNjZsLTEuNS0xLjVjLjAyLS4wMi4wMy0uMDQuMDUtLjA2cy4wNC0uMDMuMDYtLjA1bDEuMTQgMS4xNGMtLjE1LjQ1LS4yMy43NC0uMjMgMS4xNHptLTYuMzggNi4zOGMuODEgMCAxLjUtLjMzIDIuMDUtLjg4cy44OC0xLjI0Ljg4LTIuMDVjMC0uODEgLS4zMy0xLjUgLS44OC0yLjA1cy0xLjI0LS44OC0yLjA1LS44OFM4LjM5IDEzLjY1IDcuNSAxNS41bDItMmMuMzMtLjMzLjc3LS41IDEuMjUtLjVoMi41bC02IDYgMy41IDMuNWgyLjVjLjQ4IDAgLjkyLS4xNyAxLjI1LS41ek0uNSA0LjIxbDIuMDggMi4wOEw3LjUgMS4zbDEuNSA3LjUgNC4yNCA0LjI0TDkuNSA4LjhsLTQtNC4yNS0yLjI1LTIuMjV6bTE3LjM4IDYuMTVsLTIuNzUgMi4yMy0xLjczLTEuNzMgNi4yNi02LjI2IDIuMjIgMi4yMnoiLz48L3N2Zz4=" alt="avatar" class="player-avatar"><span class="player-name">Zero13</span></div>
-            <div class="top-center-nav">
-                <button class="icon-button active" title="大廳" onclick="goToPage('lobby-page')">🏠</button>
-                <button class="icon-button" title="武將" onclick="goToPage('hero-roster-page')">⚔️</button>
-                <button class="icon-button" title="通行證" onclick="goToPage('placeholder-page', 'lobby-page', '通行證')">📜</button>
-                <button class="icon-button" title="商城" onclick="goToPage('placeholder-page', 'lobby-page', '商城')">🛒</button>
-                <button class="icon-button" title="社群" onclick="goToPage('community-page')">🌐</button>
-                <button class="icon-button" title="設定" onclick="goToPage('placeholder-page', 'lobby-page', '設定')">⚙️</button>
-                <button class="icon-button" title="信箱" onclick="goToPage('placeholder-page', 'lobby-page', '信箱')">✉️</button>
-            </div>
-            <div class="top-right-cluster">
-                <div class="currency-display"><span class="currency-icon" style="color: var(--gold-color);">💰</span><span class="currency-amount">999,999</span></div>
-                <div class="currency-display"><span class="currency-icon" style="color: var(--gem-color);">💎</span><span class="currency-amount">88,888</span></div>
-            </div>
-        </div>
 
-        <!-- Layout 1: Lobby -->
-        <div id="lobby-page" class="page active">
-            <h2 class="page-header">遊戲大廳</h2>
-            <div class="bottom-right-play"><button class="play-button-rect" onclick="goToPage('match-lobby-page')">對戰</button></div>
-        </div>
-
-        <!-- Layout 2: Match Lobby -->
-        <div id="match-lobby-page" class="page">
-            <div class="horizontal-scroll-container">
-                <div class="mode-button" style="background-image: url(https://i.imgur.com/wVf5a7g.jpeg);"><h3 class="mode-button-title">線上</h3></div>
-                <div class="mode-button" style="background-image: url(https://i.imgur.com/Y1bA7Yt.jpeg);"><h3 class="mode-button-title">Roguelike</h3></div>
-                <div class="mode-button" style="background-image: url(https://i.imgur.com/S5TfM6f.jpeg);"><h3 class="mode-button-title">單人</h3></div>
-                <div class="mode-button" style="background-image: url(https://i.imgur.com/7gK7j8h.jpeg);"><h3 class="mode-button-title">雙人</h3></div>
-                <div class="mode-button" style="background-image: url(https://i.imgur.com/OqDkP5t.jpeg);"><h3 class="mode-button-title">練習</h3></div>
-            </div>
-            <button class="back-button" onclick="goToPage('lobby-page')">返回大廳</button>
-        </div>
-
-        <!-- Layout 3: Standard Pages -->
-        <div id="hero-roster-page" class="page">
-            <div class="standard-page-layout">
-                <h2 class="standard-page-header">武將一覽</h2>
-                <div class="main-content-area">
-                    <div class="hero-grid-container" id="hero-grid"></div>
-                </div>
-            </div>
-        </div>
-        <div id="player-info-page" class="page">
-            <div class="standard-page-layout">
-                <h2 class="standard-page-header">玩家資訊</h2>
-                <div class="main-content-area">
-                     <div class="player-info-grid">
-                         <div class="player-info-left">
-                            <div class="large-avatar"></div>
-                            <h3 class="profile-name">Zero13</h3>
-                            <p class="profile-id">ID: 10000001</p>
-                            <div class="profile-stats">
-                                <div class="stat-item"><span class="stat-label">等級</span><span class="stat-value">60</span></div>
-                                <div class="stat-item"><span class="stat-label">家族</span><span class="stat-value">None</span></div>
-                            </div>
-                        </div>
-                        <div class="player-info-right">
-                            <div class="detail-item"><span class="detail-label">暱稱</span><span class="detail-value">Zero13</span></div>
-                            <div class="detail-item"><span class="detail-label">ID</span><span class="detail-value">10000001</span></div>
-                            <div class="detail-item"><span class="detail-label">登入時長</span><span class="detail-value">123 小時 45 分鐘</span></div>
-                            <div class="detail-item"><span class="detail-label">帳號創建時間</span><span class="detail-value">2023 / 10 / 26</span></div>
-                            <div class="detail-item"><span class="detail-label">擁有武將</span><span class="detail-value">14 / 14</span></div>
-                            <div class="detail-item"><span class="detail-label">總對戰場次</span><span class="detail-value">888</span></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <button class="back-button" onclick="goToPage('lobby-page')">返回大廳</button>
-        </div>
-        <div id="community-page" class="page">
-             <div class="standard-page-layout">
-                <h2 class="standard-page-header">社群</h2>
-                <div class="main-content-area">
-                    <div class="community-button-grid">
-                        <button class="community-button" onclick="goToPage('placeholder-page', 'community-page', '好友')">好友</button>
-                        <button class="community-button" onclick="goToPage('placeholder-page', 'community-page', '家族')">家族</button>
-                        <button class="community-button" onclick="goToPage('placeholder-page', 'community-page', '對戰重播')">對戰重播</button>
-                        <button class="community-button" onclick="goToPage('placeholder-page', 'community-page', '排行榜')">排行榜</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="placeholder-page" class="page">
-            <div class="standard-page-layout">
-                <h2 id="placeholder-title" class="standard-page-header"></h2>
-                <div class="main-content-area">
-                    <p class="placeholder-text">此功能仍在規劃中</p>
-                </div>
-            </div>
-            <button id="placeholder-back-button" class="back-button">返回</button>
-        </div>
+<div class="map-container">
+    <!-- 第 1 層 -->
+    <div class="map-layer">
+        <div class="node event-start" data-event-type="起始">起始</div>
     </div>
 
-    <script>
-        function goToPage(pageId, backTargetId, placeholderTitle) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            const targetPage = document.getElementById(pageId);
-            targetPage.classList.add('active');
+    <!-- 第 2 層 -->
+    <div class="map-layer">
+        <div class="node event-battle" data-event-type="對戰">對戰</div>
+        <div class="node event-random" data-event-type="隨機">隨機</div>
+    </div>
+    
+    <!-- 第 3 層 -->
+    <div class="map-layer">
+        <div class="node event-battle" data-event-type="對戰">對戰</div>
+        <div class="node event-shop" data-event-type="商店">商店</div>
+        <div class="node event-battle" data-event-type="對戰">對戰</div>
+    </div>
 
-            const hudPages = ['lobby-page', 'hero-roster-page', 'community-page'];
-            const isLobbyPlaceholder = pageId === 'placeholder-page' && backTargetId === 'lobby-page';
-            const showHud = (hudPages.includes(pageId) || isLobbyPlaceholder);
-            document.getElementById('main-hud').style.display = showHud ? 'block' : 'none';
+    <!-- 第 4 層 -->
+    <div class="map-layer">
+        <div class="node event-random" data-event-type="隨機">隨機</div>
+        <div class="node event-battle" data-event-type="對戰">對戰</div>
+    </div>
 
-            const navButtons = document.querySelectorAll('.top-center-nav .icon-button');
-            navButtons.forEach(btn => {
-                const title = btn.getAttribute('title');
-                let isActive = 
-                    (pageId === 'lobby-page' && title === '大廳') ||
-                    (pageId === 'hero-roster-page' && title === '武將') ||
-                    (pageId === 'community-page' && title === '社群') ||
-                    (isLobbyPlaceholder && placeholderTitle === title);
-                btn.classList.toggle('active', isActive);
-            });
+    <!-- 第 5 層 -->
+    <div class="map-layer">
+        <div class="node event-shop" data-event-type="商店">商店</div>
+    </div>
 
-            if (pageId === 'placeholder-page') {
-                document.getElementById('placeholder-title').innerText = placeholderTitle || "功能";
-                const finalBackTarget = backTargetId || 'lobby-page';
-                document.getElementById('placeholder-back-button').setAttribute('onclick', `goToPage('${finalBackTarget}')`);
-            }
-        }
-        function generateGridItems(containerId, count, type) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            let html = '';
-            for (let i = 1; i <= count; i++) {
-                html += `<div class="hero-avatar-box" onclick="goToPage('placeholder-page', 'hero-roster-page', '${type} ${i} 資訊')">${type} ${i}</div>`;
-            }
-            container.innerHTML = html;
-        }
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('main-hud').style.display = 'block';
-            generateGridItems('hero-grid', 14, '武將');
-        });
-    </script>
+    <!-- 第 6 層：BOSS -->
+    <div class="map-layer">
+        <div class="node event-boss" data-event-type="Boss">Boss</div>
+    </div>
+</div>
+
 </body>
 </html>
