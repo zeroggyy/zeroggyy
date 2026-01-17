@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGF Lobby UI - Dynamic Content</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700;900&display=swap');
+
+        body {
+            background-color: #050505;
+            color: white;
+            font-family: 'Noto Sans TC', sans-serif;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 177.78vh;
+            aspect-ratio: 16 / 9;
+            background: #111;
+            position: relative;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .background-wrapper {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+        }
+
+        .bg-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.4) contrast(1.1);
+            transition: transform 1.2s ease-out, filter 0.5s;
+        }
+
+        .bg-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(0,0,0,0.95) 10%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.9) 100%);
+        }
+
+        /* 中央選單項目基礎樣式 */
+        .menu-item {
+            transition: all 0.3s cubic-bezier(0.2, 1, 0.3, 1);
+            position: relative;
+            cursor: pointer;
+            letter-spacing: 2px;
+            opacity: 0;
+            animation: slideIn 0.4s ease-out forwards;
+            white-space: nowrap;
+            padding-left: 20px;
+            width: fit-content;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* 選中與懸停效果 (中央選單) */
+        .menu-item:hover, .menu-item.active {
+            color: #39FF14;
+            transform: translateX(15px);
+            text-shadow: 0 0 20px rgba(57, 255, 20, 0.5);
+        }
+
+        .menu-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 4px;
+            height: 0;
+            background: #39FF14;
+            transition: height 0.3s, top 0.3s;
+            transform: translateY(-50%);
+        }
+
+        .menu-item:hover::before, .menu-item.active::before {
+            height: 80%;
+        }
+
+        /* 導覽分頁標籤 - 強化選中表現 */
+        .nav-tab {
+            font-size: 11px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            padding: 10px 20px;
+            position: relative;
+            background: transparent;
+            /* 讓切換更俐落 */
+        }
+
+        .nav-tab:hover {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 選中狀態：強烈的螢光綠與底線 */
+        .nav-tab.active {
+            color: #39FF14;
+            background: linear-gradient(180deg, rgba(57, 255, 20, 0.1) 0%, transparent 100%);
+            text-shadow: 0 0 15px rgba(57, 255, 20, 0.6);
+        }
+
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #39FF14;
+            box-shadow: 0 0 15px #39FF14;
+            animation: tabUnderline 0.3s ease-out forwards;
+        }
+
+        @keyframes tabUnderline {
+            from { width: 0; left: 50%; }
+            to { width: 100%; left: 0; }
+        }
+
+        .bumper-hint {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .scanlines {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0.15;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="scanlines"></div>
+
+        <div class="background-wrapper">
+            <img id="mainBg" src="https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=2070" alt="Background" class="bg-image">
+            <div class="bg-overlay"></div>
+        </div>
+
+        <!-- 1. 頂部導覽層 -->
+        <nav class="relative z-20 flex flex-col bg-black/80 backdrop-blur-xl border-b border-white/10">
+            <div class="flex items-center justify-between px-10 py-3">
+                <div class="flex items-center">
+                    <div class="text-4xl font-black italic tracking-tighter text-white">SGF <span class="text-[10px] font-normal not-italic opacity-40 ml-1">LOBBY</span></div>
+                </div>
+                
+                <div class="flex items-center gap-8 text-sm font-bold">
+                    <div class="flex items-center gap-3 bg-white/5 px-4 py-1 rounded-full border border-white/5">
+                        <span class="text-white/40 text-[10px] uppercase">Gems</span>
+                        <span class="text-[#39FF14] font-mono">12,400</span>
+                    </div>
+                    <div class="flex items-center gap-3 bg-white/5 px-4 py-1 rounded-full border border-white/5">
+                        <span class="text-white/40 text-[10px] uppercase">Gold</span>
+                        <span class="text-yellow-400 font-mono">850,000</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 二級導覽分頁區 -->
+            <div class="flex items-center gap-4 px-10 py-0 bg-white/5 overflow-x-auto no-scrollbar">
+                <div class="bumper-hint">L1</div>
+                <div id="tabContainer" class="flex items-center">
+                    <span class="nav-tab active" onclick="switchTab('Online')">Online</span>
+                    <span class="nav-tab" onclick="switchTab('Offline')">Offline</span>
+                    <span class="nav-tab" onclick="switchTab('武將')">武將</span>
+                    <span class="nav-tab" onclick="switchTab('通行證')">通行證</span>
+                    <span class="nav-tab" onclick="switchTab('任務')">任務</span>
+                    <span class="nav-tab" onclick="switchTab('商城')">商城</span>
+                    <span class="nav-tab" onclick="switchTab('社群')">社群</span>
+                    <span class="nav-tab" onclick="switchTab('背包')">背包</span>
+                    <span class="nav-tab" onclick="switchTab('設定')">設定</span>
+                    <span class="nav-tab" onclick="switchTab('通知')">通知</span>
+                </div>
+                <div class="bumper-hint">R1</div>
+            </div>
+        </nav>
+
+        <!-- 2. 中央內容層 -->
+        <main class="relative z-20 flex-1 flex flex-col justify-center px-16">
+            <div id="categoryLabel" class="text-[#39FF14] text-[10px] font-black tracking-[0.4em] mb-4 opacity-80 uppercase">ONLINE</div>
+            
+            <div id="menuContainer" class="flex flex-col gap-1">
+                <!-- JavaScript 會在這裡注入內容 -->
+            </div>
+
+            <!-- 右側預覽窗格 -->
+            <div id="previewCardWrapper" class="absolute right-16 top-1/2 -translate-y-1/2">
+                <div id="previewCard" class="w-80 p-5 bg-black/60 border border-white/10 backdrop-blur-md rounded-lg shadow-2xl transition-all duration-500">
+                    <div class="flex justify-between items-center mb-4">
+                        <span id="previewLabel" class="text-[10px] font-black tracking-widest opacity-50 uppercase">FEATURED</span>
+                        <span class="text-[10px] border border-[#39FF14] text-[#39FF14] px-2 rounded">INFO</span>
+                    </div>
+                    <div class="aspect-video bg-gradient-to-t from-zinc-800 to-zinc-700 rounded overflow-hidden mb-4 border border-white/5">
+                        <img id="previewImg" src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=600" class="w-full h-full object-cover mix-blend-luminosity hover:mix-blend-normal transition duration-500">
+                    </div>
+                    <h3 id="previewTitle" class="text-lg font-black mb-1">準備就緒</h3>
+                    <p id="previewDesc" class="text-[11px] text-white/50 leading-relaxed">選擇左側功能以開始導航。</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- 3. 底部資訊層 -->
+        <footer class="relative z-20 h-14 bg-black flex items-center justify-between px-10 border-t border-white/5">
+            <div class="flex items-center gap-4">
+                <div class="w-1 h-1 bg-[#39FF14] rotate-45"></div>
+                <div id="descText" class="text-xs font-bold text-white/60 tracking-wider transition-all duration-300 uppercase">
+                    SELECT A MODE TO START YOUR JOURNEY
+                </div>
+            </div>
+            <div class="flex items-center gap-8 text-[10px] font-black tracking-widest text-white/40">
+                <div class="flex items-center gap-2">
+                    <span class="text-white border border-white/20 px-1.5 rounded">ENTER</span>
+                    <span>CONFIRM</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-white border border-white/20 px-1.5 rounded">ESC</span>
+                    <span>BACK</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const tabData = {
+            'Online': {
+                label: 'ONLINE MODES',
+                items: ['排行對戰', '建立房間', '練習'],
+                footer: '與全球玩家即時競技，提升你的全球排名。',
+                bg: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=2070'
+            },
+            'Offline': {
+                label: 'OFFLINE MODES',
+                items: ['Roguelike', 'Arcade Mode', 'Player vs CPU', 'Player vs Player', 'TUTORIAL'],
+                footer: '在本地模式中磨練技巧，或體驗 Roguelike 的隨機挑戰。',
+                bg: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=2070'
+            },
+            '武將': {
+                label: 'GENERALS',
+                items: ['武將一覽', '更換外觀'],
+                footer: '管理你的武將陣容，為他們更換華麗的戰鬥服飾。',
+                bg: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&q=80&w=2070'
+            },
+            '通行證': {
+                label: 'BATTLE PASS',
+                items: ['本月通行證'],
+                footer: '查看本月賽季獎勵，解鎖限定武將與外觀。',
+                bg: 'https://images.unsplash.com/photo-1616110129443-d18c99851a57?auto=format&fit=crop&q=80&w=2070'
+            },
+            '任務': {
+                label: 'MISSIONS',
+                items: ['每日', '每週', '每月', '活動', '成就'],
+                footer: '完成各種目標以獲得 Gems、Gold 與經驗值。',
+                bg: 'https://images.unsplash.com/photo-1580234811497-9bd7fd0f37a9?auto=format&fit=crop&q=80&w=2070'
+            },
+            '商城': {
+                label: 'STORE',
+                items: ['限時特惠', '武將商店', '外觀商店', '資源兌換'],
+                footer: '使用 Gems 或 Gold 購買最新的遊戲道具。',
+                bg: 'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?auto=format&fit=crop&q=80&w=2070'
+            },
+            '社群': {
+                label: 'SOCIAL',
+                items: ['好友清單', '家族', '對戰重播', '排行榜'],
+                footer: '管理社交關係，與家族成員互動或查看全球排行榜。',
+                bg: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=2070'
+            },
+            '背包': {
+                label: 'INVENTORY',
+                items: ['查看所有物品', '圖鑑'],
+                footer: '瀏覽目前擁有的素材、道具與解鎖的武將圖鑑。',
+                bg: 'https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80&w=2070'
+            },
+            '設定': {
+                label: 'SETTINGS',
+                items: ['系統設定項目'],
+                footer: '調整顯示、音效、操作按鍵與帳號安全設定。',
+                bg: 'https://images.unsplash.com/photo-1551033406-611cf9a28f67?auto=format&fit=crop&q=80&w=2070'
+            },
+            '通知': {
+                label: 'NOTIFICATIONS',
+                items: ['系統郵件', '活動通知'],
+                footer: '查看最新的系統郵件回饋與領取獎勵。',
+                bg: 'https://images.unsplash.com/photo-1577563908411-5077b6ac7a20?auto=format&fit=crop&q=80&w=2070'
+            }
+        };
+
+        function switchTab(tabId) {
+            // 更新導覽標籤狀態
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.innerText === tabId) tab.classList.add('active');
+            });
+
+            const data = tabData[tabId];
+            if (!data) return;
+
+            // 更新內容標籤與背景
+            document.getElementById('categoryLabel').innerText = data.label;
+            document.getElementById('mainBg').src = data.bg;
+            document.getElementById('descText').innerText = data.footer;
+
+            const container = document.getElementById('menuContainer');
+            container.innerHTML = '';
+            
+            container.className = 'flex flex-col gap-1';
+
+            data.items.forEach((item, index) => {
+                const div = document.createElement('div');
+                const fontSize = 'text-5xl';
+                
+                // 第一個項目預設為 active
+                div.className = `menu-item ${fontSize} font-black uppercase ${index === 0 ? 'active' : ''}`;
+                div.style.animationDelay = (index * 0.05) + 's';
+                div.innerText = item;
+                
+                div.onclick = () => {
+                    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+                    div.classList.add('active');
+                    updateFooterFeedback(item);
+                };
+
+                div.onmouseenter = () => {
+                    updateFooterFeedback(item);
+                };
+                div.onmouseleave = () => {
+                    document.getElementById('descText').innerText = data.footer;
+                };
+                container.appendChild(div);
+            });
+
+            document.getElementById('previewTitle').innerText = tabId;
+            document.getElementById('previewDesc').innerText = `目前分頁：${tabId} 的詳細資訊顯示區。`;
+        }
+
+        function updateFooterFeedback(item) {
+            const footer = document.getElementById('descText');
+            footer.innerText = `選擇了：${item}`;
+            footer.style.color = '#39FF14';
+            setTimeout(() => { footer.style.color = 'rgba(255,255,255,0.6)'; }, 500);
+        }
+
+        // 初始化：進入 Online 分頁
+        window.onload = () => {
+            switchTab('Online');
+        };
+    </script>
+</body>
+</html>
