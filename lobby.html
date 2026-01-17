@@ -32,10 +32,15 @@
             flex-direction: column;
         }
 
+        /* 背景容器：稍微加大以提供出血位，防止動畫露出邊緣 */
         .background-wrapper {
             position: absolute;
-            inset: 0;
+            top: -5%;
+            left: -5%;
+            width: 110%;
+            height: 110%;
             z-index: 0;
+            overflow: hidden;
         }
 
         .bg-image {
@@ -44,6 +49,7 @@
             object-fit: cover;
             filter: brightness(0.4) contrast(1.1);
             transition: transform 1.2s ease-out, filter 0.5s;
+            will-change: transform;
         }
 
         .bg-overlay {
@@ -107,14 +113,12 @@
             padding: 10px 20px;
             position: relative;
             background: transparent;
-            /* 讓切換更俐落 */
         }
 
         .nav-tab:hover {
             color: rgba(255, 255, 255, 0.7);
         }
 
-        /* 選中狀態：強烈的螢光綠與底線 */
         .nav-tab.active {
             color: #39FF14;
             background: linear-gradient(180deg, rgba(57, 255, 20, 0.1) 0%, transparent 100%);
@@ -164,12 +168,64 @@
             z-index: 10;
             opacity: 0.15;
         }
+
+        /* 側邊選單樣式 */
+        #sideDrawer {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 50;
+        }
+
+        #drawerOverlay {
+            transition: opacity 0.4s ease;
+            z-index: 40;
+        }
+
+        .drawer-item {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border-left: 0px solid #39FF14;
+        }
+
+        .drawer-item:hover {
+            background: rgba(57, 255, 20, 0.1);
+            color: #39FF14;
+            border-left-width: 4px;
+            padding-left: 28px;
+        }
+
+        .drawer-item-exit:hover {
+            background: rgba(255, 50, 50, 0.1);
+            color: #ff3232;
+            border-left-color: #ff3232;
+        }
     </style>
 </head>
 <body>
 
     <div class="game-container">
         <div class="scanlines"></div>
+
+        <!-- 側邊選單遮罩 -->
+        <div id="drawerOverlay" class="absolute inset-0 bg-black/60 opacity-0 pointer-events-none" onclick="toggleDrawer(false)"></div>
+
+        <!-- 側邊選單內容 -->
+        <div id="sideDrawer" class="absolute inset-y-0 left-0 w-72 bg-zinc-900/95 border-r border-white/10 backdrop-blur-xl -translate-x-full flex flex-col shadow-2xl">
+            <div class="p-8 border-b border-white/5">
+                <div class="text-xs font-black text-[#39FF14] tracking-[0.3em] mb-2">USER MENU</div>
+                <div class="text-2xl font-black italic">LEGEND_WARRIOR_01</div>
+            </div>
+            
+            <div class="flex-1 py-4 flex flex-col">
+                <div class="drawer-item px-8 py-4 font-bold text-sm tracking-widest uppercase">個人資料</div>
+                <div class="drawer-item px-8 py-4 font-bold text-sm tracking-widest uppercase">排行榜</div>
+                <div class="drawer-item px-8 py-4 font-bold text-sm tracking-widest uppercase">設定</div>
+                <div class="drawer-item px-8 py-4 font-bold text-sm tracking-widest uppercase">通知</div>
+                <div class="drawer-item px-8 py-4 font-bold text-sm tracking-widest uppercase">支援</div>
+                <div class="mt-auto border-t border-white/5">
+                    <div class="drawer-item drawer-item-exit px-8 py-6 font-black text-sm tracking-[0.2em] uppercase text-white/40">離開遊戲</div>
+                </div>
+            </div>
+        </div>
 
         <div class="background-wrapper">
             <img id="mainBg" src="https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=2070" alt="Background" class="bg-image">
@@ -179,10 +235,26 @@
         <!-- 1. 頂部導覽層 -->
         <nav class="relative z-20 flex flex-col bg-black/80 backdrop-blur-xl border-b border-white/10">
             <div class="flex items-center justify-between px-10 py-3">
-                <div class="flex items-center">
+                <!-- 左側：LOGO 與 玩家資訊 -->
+                <div class="flex items-center gap-8">
                     <div class="text-4xl font-black italic tracking-tighter text-white">SGF <span class="text-[10px] font-normal not-italic opacity-40 ml-1">LOBBY</span></div>
+                    
+                    <!-- 玩家資訊區域 (點擊跳出選單) -->
+                    <div class="flex items-center gap-3 pl-8 border-l border-white/10 cursor-pointer group" onclick="toggleDrawer(true)">
+                        <div class="relative">
+                            <div class="w-10 h-10 rounded-full border-2 border-[#39FF14] overflow-hidden bg-zinc-800 shadow-[0_0_10px_rgba(57,255,20,0.3)] group-hover:shadow-[0_0_15px_rgba(57,255,20,0.6)] transition-all">
+                                <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100" alt="Avatar" class="w-full h-full object-cover">
+                            </div>
+                            <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-[#39FF14] rounded-full border-2 border-black"></div>
+                        </div>
+                        <div class="flex flex-col leading-none">
+                            <span class="text-[9px] font-black text-[#39FF14] tracking-[0.2em] uppercase mb-1">Active Rank: Master</span>
+                            <span class="text-sm font-black italic tracking-wide group-hover:text-[#39FF14] transition-colors">LEGEND_WARRIOR_01</span>
+                        </div>
+                    </div>
                 </div>
                 
+                <!-- 右側：貨幣 -->
                 <div class="flex items-center gap-8 text-sm font-bold">
                     <div class="flex items-center gap-3 bg-white/5 px-4 py-1 rounded-full border border-white/5">
                         <span class="text-white/40 text-[10px] uppercase">Gems</span>
@@ -324,7 +396,6 @@
         };
 
         function switchTab(tabId) {
-            // 更新導覽標籤狀態
             document.querySelectorAll('.nav-tab').forEach(tab => {
                 tab.classList.remove('active');
                 if (tab.innerText === tabId) tab.classList.add('active');
@@ -333,7 +404,6 @@
             const data = tabData[tabId];
             if (!data) return;
 
-            // 更新內容標籤與背景
             document.getElementById('categoryLabel').innerText = data.label;
             document.getElementById('mainBg').src = data.bg;
             document.getElementById('descText').innerText = data.footer;
@@ -347,7 +417,6 @@
                 const div = document.createElement('div');
                 const fontSize = 'text-5xl';
                 
-                // 第一個項目預設為 active
                 div.className = `menu-item ${fontSize} font-black uppercase ${index === 0 ? 'active' : ''}`;
                 div.style.animationDelay = (index * 0.05) + 's';
                 div.innerText = item;
@@ -366,9 +435,6 @@
                 };
                 container.appendChild(div);
             });
-
-            document.getElementById('previewTitle').innerText = tabId;
-            document.getElementById('previewDesc').innerText = `目前分頁：${tabId} 的詳細資訊顯示區。`;
         }
 
         function updateFooterFeedback(item) {
@@ -378,7 +444,22 @@
             setTimeout(() => { footer.style.color = 'rgba(255,255,255,0.6)'; }, 500);
         }
 
-        // 初始化：進入 Online 分頁
+        // 側邊選單切換邏輯
+        function toggleDrawer(isOpen) {
+            const drawer = document.getElementById('sideDrawer');
+            const overlay = document.getElementById('drawerOverlay');
+            
+            if (isOpen) {
+                drawer.style.transform = 'translateX(0)';
+                overlay.style.opacity = '1';
+                overlay.style.pointerEvents = 'auto';
+            } else {
+                drawer.style.transform = 'translateX(-100%)';
+                overlay.style.opacity = '0';
+                overlay.style.pointerEvents = 'none';
+            }
+        }
+
         window.onload = () => {
             switchTab('Online');
         };
