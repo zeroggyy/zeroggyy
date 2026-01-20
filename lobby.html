@@ -9,7 +9,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700;900&display=swap');
 
         body {
-            background-color: #050505;
+            background-color: #000;
             color: white;
             font-family: 'Noto Sans TC', sans-serif;
             margin: 0;
@@ -20,45 +20,53 @@
             overflow: hidden;
         }
 
+        /* 16:9 固定比例容器 */
         .game-container {
             width: 100%;
             max-width: 177.78vh;
             aspect-ratio: 16 / 9;
-            background: #111;
+            background: #000;
             position: relative;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            box-shadow: 0 0 100px rgba(0,0,0,0.9);
             overflow: hidden;
             display: flex;
             flex-direction: column;
         }
 
-        /* 背景容器：稍微加大以提供出血位，防止動畫露出邊緣 */
-        .background-wrapper {
+        /* 極致安全背景層 */
+        .background-layer {
             position: absolute;
-            top: -5%;
-            left: -5%;
-            width: 110%;
-            height: 110%;
+            top: -10%;
+            left: -10%;
+            width: 120%;
+            height: 120%;
             z-index: 0;
             overflow: hidden;
+            pointer-events: none;
         }
 
         .bg-image {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            filter: brightness(0.4) contrast(1.1);
-            transition: transform 1.2s ease-out, filter 0.5s;
+            filter: brightness(0.35) contrast(1.15);
+            transition: transform 1.2s cubic-bezier(0.2, 1, 0.3, 1), filter 0.8s ease;
             will-change: transform;
+            transform: scale(1.1); 
         }
 
         .bg-overlay {
             position: absolute;
             inset: 0;
-            background: linear-gradient(90deg, rgba(0,0,0,0.95) 10%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.9) 100%);
+            background: linear-gradient(90deg, 
+                rgba(0,0,0,1) 0%, 
+                rgba(0,0,0,0.8) 15%, 
+                rgba(0,0,0,0.1) 50%, 
+                rgba(0,0,0,0.8) 85%, 
+                rgba(0,0,0,1) 100%);
         }
 
-        /* 中央選單項目基礎樣式 */
+        /* 中央選單項目 (垂直列表) */
         .menu-item {
             transition: all 0.3s cubic-bezier(0.2, 1, 0.3, 1);
             position: relative;
@@ -77,11 +85,10 @@
             to { opacity: 1; transform: translateX(0); }
         }
 
-        /* 選中與懸停效果 (中央選單) */
         .menu-item:hover, .menu-item.active {
             color: #39FF14;
             transform: translateX(15px);
-            text-shadow: 0 0 20px rgba(57, 255, 20, 0.5);
+            text-shadow: 0 0 20px rgba(57, 255, 20, 0.6);
         }
 
         .menu-item::before {
@@ -100,7 +107,129 @@
             height: 80%;
         }
 
-        /* 導覽分頁標籤 - 強化選中表現 */
+        /* 武將頭像框樣式 */
+        .portrait-frame {
+            aspect-ratio: 1 / 1;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .portrait-frame:hover {
+            border-color: rgba(255,255,255,0.5);
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        .portrait-frame.unlocked {
+            border-color: rgba(57, 255, 20, 0.3);
+            background: linear-gradient(135deg, rgba(57, 255, 20, 0.1), transparent);
+        }
+
+        .portrait-frame.unlocked:hover {
+            border-color: #39FF14;
+            box-shadow: 0 0 25px rgba(57, 255, 20, 0.5);
+        }
+
+        .portrait-frame.locked {
+            filter: grayscale(1) opacity(0.4);
+        }
+
+        .portrait-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .lock-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            opacity: 0.6;
+            color: white;
+        }
+
+        .char-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(0deg, rgba(0,0,0,0.9), transparent);
+            padding: 10px 4px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* 任務列表項樣式 */
+        .mission-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 16px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .mission-item:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(57, 255, 20, 0.2);
+        }
+
+        .mission-progress-bg {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            width: 100%;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .mission-progress-fill {
+            height: 100%;
+            background: #39FF14;
+            box-shadow: 0 0 10px #39FF14;
+        }
+
+        .mission-status-btn {
+            padding: 6px 20px;
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+
+        .status-go {
+            border: 1px solid #39FF14;
+            color: #39FF14;
+        }
+
+        .status-go:hover {
+            background: #39FF14;
+            color: black;
+        }
+
+        .status-done {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+        }
+
+        /* 頂部分頁導覽 */
         .nav-tab {
             font-size: 11px;
             font-weight: 900;
@@ -110,7 +239,7 @@
             cursor: pointer;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             white-space: nowrap;
-            padding: 10px 20px;
+            padding: 12px 24px;
             position: relative;
             background: transparent;
         }
@@ -121,7 +250,7 @@
 
         .nav-tab.active {
             color: #39FF14;
-            background: linear-gradient(180deg, rgba(57, 255, 20, 0.1) 0%, transparent 100%);
+            background: linear-gradient(180deg, rgba(57, 255, 20, 0.15) 0%, transparent 100%);
             text-shadow: 0 0 15px rgba(57, 255, 20, 0.6);
         }
 
@@ -145,7 +274,7 @@
         .bumper-hint {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 1px 6px;
+            padding: 1px 8px;
             border-radius: 3px;
             font-size: 10px;
             font-weight: 900;
@@ -156,28 +285,25 @@
             user-select: none;
         }
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
         .scanlines {
             position: absolute;
             inset: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
             background-size: 100% 4px;
             pointer-events: none;
             z-index: 10;
-            opacity: 0.15;
+            opacity: 0.1;
         }
 
-        /* 側邊選單樣式 */
+        /* 側邊選單 */
         #sideDrawer {
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 50;
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 100;
         }
 
         #drawerOverlay {
             transition: opacity 0.4s ease;
-            z-index: 40;
+            z-index: 90;
         }
 
         .drawer-item {
@@ -189,14 +315,22 @@
         .drawer-item:hover {
             background: rgba(57, 255, 20, 0.1);
             color: #39FF14;
-            border-left-width: 4px;
-            padding-left: 28px;
+            border-left-width: 6px;
+            padding-left: 32px;
         }
 
-        .drawer-item-exit:hover {
-            background: rgba(255, 50, 50, 0.1);
-            color: #ff3232;
-            border-left-color: #ff3232;
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* 自定義滾動條 */
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #39FF14;
+            box-shadow: 0 0 10px #39FF14;
         }
     </style>
 </head>
@@ -206,68 +340,65 @@
         <div class="scanlines"></div>
 
         <!-- 側邊選單遮罩 -->
-        <div id="drawerOverlay" class="absolute inset-0 bg-black/60 opacity-0 pointer-events-none" onclick="toggleDrawer(false)"></div>
+        <div id="drawerOverlay" class="absolute inset-0 bg-black/70 opacity-0 pointer-events-none" onclick="toggleDrawer(false)"></div>
 
         <!-- 側邊選單內容 -->
-        <div id="sideDrawer" class="absolute inset-y-0 left-0 w-72 bg-zinc-900/95 border-r border-white/10 backdrop-blur-xl -translate-x-full flex flex-col shadow-2xl">
-            <div class="p-8 border-b border-white/5">
-                <div class="text-xs font-black text-[#39FF14] tracking-[0.3em] mb-2">USER MENU</div>
-                <div class="text-2xl font-black italic">LEGEND_WARRIOR_01</div>
+        <div id="sideDrawer" class="absolute inset-y-0 left-0 w-80 bg-[#0a0a0a]/95 border-r border-white/10 backdrop-blur-2xl -translate-x-full flex flex-col shadow-[20px_0_50px_rgba(0,0,0,0.5)]">
+            <div class="p-10 border-b border-white/5">
+                <div class="text-[10px] font-black text-[#39FF14] tracking-[0.4em] mb-2 uppercase">System Interface</div>
+                <div class="text-2xl font-black italic tracking-tight">LEGEND_WARRIOR_01</div>
             </div>
             
-            <div class="flex-1 py-4 flex flex-col">
-                <div class="drawer-item px-8 py-4 font-bold text-sm tracking-widest uppercase">個人資料</div>
-                <div class="drawer-item px-8 py-4 font-bold text-sm tracking-widest uppercase">排行榜</div>
-                <div class="drawer-item px-8 py-4 font-bold text-sm tracking-widest uppercase">設定</div>
-                <div class="drawer-item px-8 py-4 font-bold text-sm tracking-widest uppercase">通知</div>
-                <div class="drawer-item px-8 py-4 font-bold text-sm tracking-widest uppercase">支援</div>
+            <div class="flex-1 py-6 flex flex-col">
+                <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">個人資料</div>
+                <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">排行榜</div>
+                <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">設定</div>
+                <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">通知</div>
+                <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">支援</div>
                 <div class="mt-auto border-t border-white/5">
-                    <div class="drawer-item drawer-item-exit px-8 py-6 font-black text-sm tracking-[0.2em] uppercase text-white/40">離開遊戲</div>
+                    <div class="drawer-item px-10 py-8 font-black text-sm tracking-[0.2em] uppercase text-white/30 hover:text-red-500 hover:bg-red-500/10">離開遊戲</div>
                 </div>
             </div>
         </div>
 
-        <div class="background-wrapper">
+        <!-- 背景層 -->
+        <div class="background-layer">
             <img id="mainBg" src="https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=2070" alt="Background" class="bg-image">
             <div class="bg-overlay"></div>
         </div>
 
         <!-- 1. 頂部導覽層 -->
-        <nav class="relative z-20 flex flex-col bg-black/80 backdrop-blur-xl border-b border-white/10">
-            <div class="flex items-center justify-between px-10 py-3">
-                <!-- 左側：LOGO 與 玩家資訊 -->
-                <div class="flex items-center gap-8">
+        <nav class="relative z-20 flex flex-col bg-black/85 backdrop-blur-xl border-b border-white/10">
+            <div class="flex items-center justify-between px-10 py-4">
+                <div class="flex items-center gap-10">
                     <div class="text-4xl font-black italic tracking-tighter text-white">SGF <span class="text-[10px] font-normal not-italic opacity-40 ml-1">LOBBY</span></div>
                     
-                    <!-- 玩家資訊區域 (點擊跳出選單) -->
-                    <div class="flex items-center gap-3 pl-8 border-l border-white/10 cursor-pointer group" onclick="toggleDrawer(true)">
+                    <div class="flex items-center gap-4 pl-10 border-l border-white/15 cursor-pointer group" onclick="toggleDrawer(true)">
                         <div class="relative">
-                            <div class="w-10 h-10 rounded-full border-2 border-[#39FF14] overflow-hidden bg-zinc-800 shadow-[0_0_10px_rgba(57,255,20,0.3)] group-hover:shadow-[0_0_15px_rgba(57,255,20,0.6)] transition-all">
+                            <div class="w-11 h-11 rounded-full border-2 border-[#39FF14] overflow-hidden bg-zinc-800 shadow-[0_0_15px_rgba(57,255,20,0.4)] group-hover:shadow-[0_0_25px_rgba(57,255,20,0.7)] transition-all">
                                 <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100" alt="Avatar" class="w-full h-full object-cover">
                             </div>
-                            <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-[#39FF14] rounded-full border-2 border-black"></div>
+                            <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-[#39FF14] rounded-full border-2 border-black"></div>
                         </div>
                         <div class="flex flex-col leading-none">
-                            <span class="text-[9px] font-black text-[#39FF14] tracking-[0.2em] uppercase mb-1">Active Rank: Master</span>
+                            <span class="text-[9px] font-black text-[#39FF14] tracking-[0.2em] uppercase mb-1">Rank: Master</span>
                             <span class="text-sm font-black italic tracking-wide group-hover:text-[#39FF14] transition-colors">LEGEND_WARRIOR_01</span>
                         </div>
                     </div>
                 </div>
                 
-                <!-- 右側：貨幣 -->
-                <div class="flex items-center gap-8 text-sm font-bold">
-                    <div class="flex items-center gap-3 bg-white/5 px-4 py-1 rounded-full border border-white/5">
-                        <span class="text-white/40 text-[10px] uppercase">Gems</span>
-                        <span class="text-[#39FF14] font-mono">12,400</span>
+                <div class="flex items-center gap-10">
+                    <div class="flex items-center gap-4 bg-white/5 px-5 py-1.5 rounded-full border border-white/10">
+                        <span class="text-white/30 text-[10px] font-black uppercase">Gems</span>
+                        <span class="text-[#39FF14] font-mono font-black">12,400</span>
                     </div>
-                    <div class="flex items-center gap-3 bg-white/5 px-4 py-1 rounded-full border border-white/5">
-                        <span class="text-white/40 text-[10px] uppercase">Gold</span>
-                        <span class="text-yellow-400 font-mono">850,000</span>
+                    <div class="flex items-center gap-4 bg-white/5 px-5 py-1.5 rounded-full border border-white/10">
+                        <span class="text-white/30 text-[10px] font-black uppercase">Gold</span>
+                        <span class="text-yellow-400 font-mono font-black">850,000</span>
                     </div>
                 </div>
             </div>
 
-            <!-- 二級導覽分頁區 -->
             <div class="flex items-center gap-4 px-10 py-0 bg-white/5 overflow-x-auto no-scrollbar">
                 <div class="bumper-hint">L1</div>
                 <div id="tabContainer" class="flex items-center">
@@ -287,44 +418,55 @@
         </nav>
 
         <!-- 2. 中央內容層 -->
-        <main class="relative z-20 flex-1 flex flex-col justify-center px-16">
-            <div id="categoryLabel" class="text-[#39FF14] text-[10px] font-black tracking-[0.4em] mb-4 opacity-80 uppercase">ONLINE</div>
-            
-            <div id="menuContainer" class="flex flex-col gap-1">
-                <!-- JavaScript 會在這裡注入內容 -->
+        <main class="relative z-20 flex-1 flex items-center px-20">
+            <div class="w-1/3 flex flex-col justify-center h-full">
+                <div id="categoryLabel" class="text-[#39FF14] text-[10px] font-black tracking-[0.5em] mb-6 opacity-80 uppercase">ONLINE MODES</div>
+                <div id="menuContainer" class="flex flex-col gap-2"></div>
             </div>
 
-            <!-- 右側預覽窗格 -->
-            <div id="previewCardWrapper" class="absolute right-16 top-1/2 -translate-y-1/2">
-                <div id="previewCard" class="w-80 p-5 bg-black/60 border border-white/10 backdrop-blur-md rounded-lg shadow-2xl transition-all duration-500">
-                    <div class="flex justify-between items-center mb-4">
-                        <span id="previewLabel" class="text-[10px] font-black tracking-widest opacity-50 uppercase">FEATURED</span>
-                        <span class="text-[10px] border border-[#39FF14] text-[#39FF14] px-2 rounded">INFO</span>
+            <!-- 右側展示區 (預覽卡片或任務捲軸) -->
+            <div id="rightDisplayArea" class="flex-1 h-full flex items-center justify-end">
+                <!-- 預覽卡片 -->
+                <div id="previewCard" class="w-80 p-6 bg-black/70 border border-white/15 backdrop-blur-xl rounded-xl shadow-2xl transition-all duration-500">
+                    <div class="flex justify-between items-center mb-5">
+                        <span id="previewLabel" class="text-[10px] font-black tracking-[0.2em] opacity-40 uppercase">System Ready</span>
+                        <span id="statusBadge" class="text-[10px] border border-[#39FF14] text-[#39FF14] px-3 py-0.5 rounded-full font-black">LOBBY</span>
                     </div>
-                    <div class="aspect-video bg-gradient-to-t from-zinc-800 to-zinc-700 rounded overflow-hidden mb-4 border border-white/5">
-                        <img id="previewImg" src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=600" class="w-full h-full object-cover mix-blend-luminosity hover:mix-blend-normal transition duration-500">
+                    <div class="aspect-video bg-zinc-800 rounded-lg overflow-hidden mb-5 border border-white/10">
+                        <img id="previewImg" src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=600" class="w-full h-full object-cover mix-blend-luminosity">
                     </div>
-                    <h3 id="previewTitle" class="text-lg font-black mb-1">準備就緒</h3>
-                    <p id="previewDesc" class="text-[11px] text-white/50 leading-relaxed">選擇左側功能以開始導航。</p>
+                    <h3 id="previewTitle" class="text-xl font-black mb-2 italic">準備就緒</h3>
+                    <p id="previewDesc" class="text-xs text-white/40 leading-relaxed font-medium">切換導航分頁以檢視不同系統的功能列表。</p>
+                </div>
+
+                <!-- 任務列表面板 (預設隱藏) -->
+                <div id="missionPanel" class="hidden w-[500px] h-[420px] bg-black/70 border border-white/15 backdrop-blur-xl rounded-xl p-6 flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 id="missionPanelTitle" class="text-xl font-black italic text-[#39FF14]">每日任務</h2>
+                        <span class="text-[10px] font-black opacity-40 uppercase tracking-widest">MISSION SCROLL</span>
+                    </div>
+                    <div id="missionList" class="flex-1 overflow-y-auto custom-scroll pr-2 flex flex-col gap-3">
+                        <!-- JavaScript 會在這裡注入任務項目 -->
+                    </div>
                 </div>
             </div>
         </main>
 
         <!-- 3. 底部資訊層 -->
-        <footer class="relative z-20 h-14 bg-black flex items-center justify-between px-10 border-t border-white/5">
-            <div class="flex items-center gap-4">
-                <div class="w-1 h-1 bg-[#39FF14] rotate-45"></div>
-                <div id="descText" class="text-xs font-bold text-white/60 tracking-wider transition-all duration-300 uppercase">
-                    SELECT A MODE TO START YOUR JOURNEY
+        <footer class="relative z-20 h-16 bg-black/95 flex items-center justify-between px-10 border-t border-white/10">
+            <div class="flex items-center gap-5">
+                <div class="w-1.5 h-1.5 bg-[#39FF14] rotate-45 shadow-[0_0_10px_#39FF14]"></div>
+                <div id="descText" class="text-sm font-bold text-white/50 tracking-widest uppercase transition-all duration-300">
+                    PLEASE SELECT A SUB-SYSTEM FROM THE TOP MENU
                 </div>
             </div>
-            <div class="flex items-center gap-8 text-[10px] font-black tracking-widest text-white/40">
-                <div class="flex items-center gap-2">
-                    <span class="text-white border border-white/20 px-1.5 rounded">ENTER</span>
+            <div class="flex items-center gap-10 text-[10px] font-black tracking-[0.2em] text-white/30">
+                <div class="flex items-center gap-3">
+                    <span class="text-white border border-white/30 px-2 py-0.5 rounded leading-none">ENTER</span>
                     <span>CONFIRM</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-white border border-white/20 px-1.5 rounded">ESC</span>
+                <div class="flex items-center gap-3">
+                    <span class="text-white border border-white/30 px-2 py-0.5 rounded leading-none">ESC</span>
                     <span>BACK</span>
                 </div>
             </div>
@@ -332,67 +474,51 @@
     </div>
 
     <script>
+        const missionMockData = [
+            { title: '首戰勝利', desc: '在任何線上模式中獲得一場勝利。', progress: 1, total: 1, reward: 'Gems x 50', status: 'done' },
+            { title: '連段大師', desc: '在對戰中達成 20 次以上的連擊。', progress: 15, total: 20, reward: 'Gold x 2000', status: 'go' },
+            { title: '好友集結', desc: '與好友組隊進行一場 2X2 對戰。', progress: 0, total: 1, reward: 'Chest x 1', status: 'go' },
+            { title: '武魂覺醒', desc: '累計消耗 1000 點體力。', progress: 850, total: 1000, reward: 'Gems x 20', status: 'go' },
+            { title: '每日巡邏', desc: '登入遊戲並在大廳停留超過 10 分鐘。', progress: 1, total: 1, reward: 'Gold x 500', status: 'done' },
+            { title: '極致挑戰', desc: '在 Offline 難度下擊敗 AI 對手。', progress: 0, total: 3, reward: 'EXP x 100', status: 'go' }
+        ];
+
         const tabData = {
-            'Online': {
-                label: 'ONLINE MODES',
-                items: ['排行對戰', '建立房間', '練習'],
-                footer: '與全球玩家即時競技，提升你的全球排名。',
-                bg: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=2070'
+            'Online': { label: 'ONLINE MODES', items: ['排行對戰', '建立房間', '練習'], footer: '與全球玩家即時競技，提升你的全球排名。', bg: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=2070' },
+            'Offline': { label: 'OFFLINE MODES', items: ['Roguelike', 'Arcade Mode', 'Player vs CPU', 'Player vs Player', 'TUTORIAL'], footer: '在本地模式中磨練技巧，或體驗 Roguelike 的隨機挑戰。', bg: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=2070' },
+            '武將': { 
+                label: 'GENERALS ARCHIVE', 
+                viewType: 'grid',
+                items: [
+                    { name: '關羽', unlocked: true, portrait: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=400' },
+                    { name: '張飛', unlocked: true, portrait: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=400' },
+                    { name: '諸葛亮', unlocked: false, portrait: '' },
+                    { name: '趙雲', unlocked: false, portrait: '' },
+                    { name: '夏侯惇', unlocked: false, portrait: '' },
+                    { name: '夏侯淵', unlocked: false, portrait: '' },
+                    { name: '荀彧', unlocked: false, portrait: '' },
+                    { name: '貂蟬', unlocked: false, portrait: '' },
+                    { name: '孫尚香', unlocked: false, portrait: '' },
+                    { name: '呂布', unlocked: false, portrait: '' },
+                    { name: '董卓', unlocked: false, portrait: '' },
+                    { name: '孫堅', unlocked: false, portrait: '' }
+                ], 
+                footer: '檢視武將檔案並配置出戰英雄。', 
+                bg: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&q=80&w=2070' 
             },
-            'Offline': {
-                label: 'OFFLINE MODES',
-                items: ['Roguelike', 'Arcade Mode', 'Player vs CPU', 'Player vs Player', 'TUTORIAL'],
-                footer: '在本地模式中磨練技巧，或體驗 Roguelike 的隨機挑戰。',
-                bg: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=2070'
+            '通行證': { label: 'BATTLE PASS', items: ['本月通行證'], footer: '查看本月賽季獎勵，解鎖限定武將與外觀。', bg: 'https://images.unsplash.com/photo-1616110129443-d18c99851a57?auto=format&fit=crop&q=80&w=2070' },
+            '任務': { 
+                label: 'MISSIONS', 
+                viewType: 'mission',
+                items: ['每日', '每週', '每月', '活動', '成就'], 
+                footer: '完成各種目標以獲得 Gems、Gold 與經驗值。', 
+                bg: 'https://images.unsplash.com/photo-1580234811497-9bd7fd0f37a9?auto=format&fit=crop&q=80&w=2070' 
             },
-            '武將': {
-                label: 'GENERALS',
-                items: ['武將一覽', '更換外觀'],
-                footer: '管理你的武將陣容，為他們更換華麗的戰鬥服飾。',
-                bg: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&q=80&w=2070'
-            },
-            '通行證': {
-                label: 'BATTLE PASS',
-                items: ['本月通行證'],
-                footer: '查看本月賽季獎勵，解鎖限定武將與外觀。',
-                bg: 'https://images.unsplash.com/photo-1616110129443-d18c99851a57?auto=format&fit=crop&q=80&w=2070'
-            },
-            '任務': {
-                label: 'MISSIONS',
-                items: ['每日', '每週', '每月', '活動', '成就'],
-                footer: '完成各種目標以獲得 Gems、Gold 與經驗值。',
-                bg: 'https://images.unsplash.com/photo-1580234811497-9bd7fd0f37a9?auto=format&fit=crop&q=80&w=2070'
-            },
-            '商城': {
-                label: 'STORE',
-                items: ['限時特惠', '武將商店', '外觀商店', '資源兌換'],
-                footer: '使用 Gems 或 Gold 購買最新的遊戲道具。',
-                bg: 'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?auto=format&fit=crop&q=80&w=2070'
-            },
-            '社群': {
-                label: 'SOCIAL',
-                items: ['好友清單', '家族', '對戰重播', '排行榜'],
-                footer: '管理社交關係，與家族成員互動或查看全球排行榜。',
-                bg: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=2070'
-            },
-            '背包': {
-                label: 'INVENTORY',
-                items: ['查看所有物品', '圖鑑'],
-                footer: '瀏覽目前擁有的素材、道具與解鎖的武將圖鑑。',
-                bg: 'https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80&w=2070'
-            },
-            '設定': {
-                label: 'SETTINGS',
-                items: ['系統設定項目'],
-                footer: '調整顯示、音效、操作按鍵與帳號安全設定。',
-                bg: 'https://images.unsplash.com/photo-1551033406-611cf9a28f67?auto=format&fit=crop&q=80&w=2070'
-            },
-            '通知': {
-                label: 'NOTIFICATIONS',
-                items: ['系統郵件', '活動通知'],
-                footer: '查看最新的系統郵件回饋與領取獎勵。',
-                bg: 'https://images.unsplash.com/photo-1577563908411-5077b6ac7a20?auto=format&fit=crop&q=80&w=2070'
-            }
+            '商城': { label: 'STORE', items: ['限時特惠', '武將商店', '外觀商店', '資源兌換'], footer: '使用 Gems 或 Gold 購買最新的遊戲道具。', bg: 'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?auto=format&fit=crop&q=80&w=2070' },
+            '社群': { label: 'SOCIAL', items: ['好友清單', '家族', '對戰重播', '排行榜'], footer: '管理社交關係，與家族成員互動或查看全球排行榜。', bg: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=2070' },
+            '背包': { label: 'INVENTORY', items: ['查看所有物品', '圖鑑'], footer: '瀏覽目前擁有的素材、道具與解鎖的武將圖鑑。', bg: 'https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80&w=2070' },
+            '設定': { label: 'SETTINGS', items: ['系統設定項目'], footer: '調整顯示、音效、操作按鍵與帳號安全設定。', bg: 'https://images.unsplash.com/photo-1551033406-611cf9a28f67?auto=format&fit=crop&q=80&w=2070' },
+            '通知': { label: 'NOTIFICATIONS', items: ['系統郵件', '活動通知'], footer: '查看最新的系統郵件回饋與領取獎勵。', bg: 'https://images.unsplash.com/photo-1577563908411-5077b6ac7a20?auto=format&fit=crop&q=80&w=2070' }
         };
 
         function switchTab(tabId) {
@@ -409,46 +535,99 @@
             document.getElementById('descText').innerText = data.footer;
 
             const container = document.getElementById('menuContainer');
+            const previewCard = document.getElementById('previewCard');
+            const missionPanel = document.getElementById('missionPanel');
             container.innerHTML = '';
             
-            container.className = 'flex flex-col gap-1';
-
-            data.items.forEach((item, index) => {
-                const div = document.createElement('div');
-                const fontSize = 'text-5xl';
+            // 頁面佈局控制
+            if (data.viewType === 'grid') {
+                previewCard.classList.add('hidden');
+                missionPanel.classList.add('hidden');
+                container.className = 'grid grid-cols-4 md:grid-cols-6 gap-6 w-[800px] mt-10';
                 
-                div.className = `menu-item ${fontSize} font-black uppercase ${index === 0 ? 'active' : ''}`;
-                div.style.animationDelay = (index * 0.05) + 's';
-                div.innerText = item;
+                data.items.forEach((char, index) => {
+                    const frame = document.createElement('div');
+                    frame.className = `portrait-frame ${char.unlocked ? 'unlocked' : 'locked'}`;
+                    frame.innerHTML = `
+                        ${char.portrait ? `<img src="${char.portrait}" class="portrait-img">` : '<div class="w-full h-full bg-zinc-800/50"></div>'}
+                        ${!char.unlocked ? '<div class="lock-icon">🔒</div>' : ''}
+                        <div class="char-name">${char.name}</div>
+                    `;
+                    container.appendChild(frame);
+                });
+            } else if (data.viewType === 'mission') {
+                previewCard.classList.add('hidden');
+                missionPanel.classList.remove('hidden');
+                container.className = 'flex flex-col gap-2';
                 
-                div.onclick = () => {
-                    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-                    div.classList.add('active');
-                    updateFooterFeedback(item);
-                };
+                data.items.forEach((item, index) => {
+                    const div = document.createElement('div');
+                    div.className = `menu-item text-5xl font-black uppercase ${index === 0 ? 'active' : ''}`;
+                    div.innerText = item;
+                    div.onclick = () => {
+                        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+                        div.classList.add('active');
+                        renderMissions(item);
+                    };
+                    container.appendChild(div);
+                });
+                renderMissions('每日'); // 預設顯示每日
+            } else {
+                previewCard.classList.remove('hidden');
+                missionPanel.classList.add('hidden');
+                container.className = 'flex flex-col gap-2';
+                
+                data.items.forEach((item, index) => {
+                    const div = document.createElement('div');
+                    div.className = `menu-item text-5xl font-black uppercase ${index === 0 ? 'active' : ''}`;
+                    div.innerText = item;
+                    div.onclick = () => {
+                        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+                        div.classList.add('active');
+                    };
+                    container.appendChild(div);
+                });
+            }
+        }
 
-                div.onmouseenter = () => {
-                    updateFooterFeedback(item);
-                };
-                div.onmouseleave = () => {
-                    document.getElementById('descText').innerText = data.footer;
-                };
-                container.appendChild(div);
+        function renderMissions(category) {
+            document.getElementById('missionPanelTitle').innerText = category + '任務';
+            const listContainer = document.getElementById('missionList');
+            listContainer.innerHTML = '';
+            
+            missionMockData.forEach((m, i) => {
+                const item = document.createElement('div');
+                item.className = 'mission-item';
+                item.style.animation = `slideIn 0.3s ease-out forwards ${i * 0.05}s`;
+                
+                const progressWidth = (m.progress / m.total) * 100;
+                
+                item.innerHTML = `
+                    <div class="flex-1 pr-6">
+                        <div class="flex justify-between items-end mb-1">
+                            <h4 class="font-black italic text-sm text-white/90">${m.title}</h4>
+                            <span class="text-[10px] font-mono text-white/30">${m.progress}/${m.total}</span>
+                        </div>
+                        <p class="text-[10px] text-white/40 mb-2">${m.desc}</p>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[9px] font-black text-[#39FF14] uppercase">REWARD:</span>
+                            <span class="text-[9px] text-white/60">${category}${m.reward}</span>
+                        </div>
+                        <div class="mission-progress-bg">
+                            <div class="mission-progress-fill" style="width: ${progressWidth}%"></div>
+                        </div>
+                    </div>
+                    <button class="mission-status-btn ${m.status === 'done' ? 'status-done' : 'status-go'}">
+                        ${m.status === 'done' ? '已領取' : '前往'}
+                    </button>
+                `;
+                listContainer.appendChild(item);
             });
         }
 
-        function updateFooterFeedback(item) {
-            const footer = document.getElementById('descText');
-            footer.innerText = `選擇了：${item}`;
-            footer.style.color = '#39FF14';
-            setTimeout(() => { footer.style.color = 'rgba(255,255,255,0.6)'; }, 500);
-        }
-
-        // 側邊選單切換邏輯
         function toggleDrawer(isOpen) {
             const drawer = document.getElementById('sideDrawer');
             const overlay = document.getElementById('drawerOverlay');
-            
             if (isOpen) {
                 drawer.style.transform = 'translateX(0)';
                 overlay.style.opacity = '1';
