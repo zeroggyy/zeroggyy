@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGF Lobby UI - Dynamic Content</title>
+    <title>SGF Lobby UI - Fix Offline Layout</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700;900&display=swap');
@@ -33,7 +33,7 @@
             flex-direction: column;
         }
 
-        /* 極致安全背景層 */
+        /* 背景安全區域方案 */
         .background-layer {
             position: absolute;
             top: -10%;
@@ -49,10 +49,9 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            filter: brightness(0.35) contrast(1.15);
-            transition: transform 1.2s cubic-bezier(0.2, 1, 0.3, 1), filter 0.8s ease;
-            will-change: transform;
-            transform: scale(1.1); 
+            filter: brightness(0.3) contrast(1.1);
+            transition: transform 1.2s cubic-bezier(0.2, 1, 0.3, 1);
+            transform: scale(1.1);
         }
 
         .bg-overlay {
@@ -60,29 +59,41 @@
             inset: 0;
             background: linear-gradient(90deg, 
                 rgba(0,0,0,1) 0%, 
-                rgba(0,0,0,0.8) 15%, 
-                rgba(0,0,0,0.1) 50%, 
-                rgba(0,0,0,0.8) 85%, 
+                rgba(0,0,0,0.85) 15%, 
+                rgba(0,0,0,0.2) 50%, 
+                rgba(0,0,0,0.85) 85%, 
                 rgba(0,0,0,1) 100%);
         }
 
-        /* 中央選單項目 (垂直列表) */
+        /* 提示紅點樣式 */
+        .badge-red {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #ff3b30;
+            border-radius: 50%;
+            border: 2px solid #000;
+            box-shadow: 0 0 10px rgba(255, 59, 48, 0.8);
+            animation: badge-pulse 2s infinite;
+            z-index: 30;
+        }
+
+        @keyframes badge-pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
+            70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(255, 59, 48, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+        }
+
+        /* 選單垂直清單項目 */
         .menu-item {
             transition: all 0.3s cubic-bezier(0.2, 1, 0.3, 1);
             position: relative;
             cursor: pointer;
             letter-spacing: 2px;
-            opacity: 0;
-            animation: slideIn 0.4s ease-out forwards;
-            white-space: nowrap;
             padding-left: 20px;
             width: fit-content;
             color: rgba(255, 255, 255, 0.4);
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
+            white-space: nowrap; /* 確保內容一行顯示 */
         }
 
         .menu-item:hover, .menu-item.active {
@@ -107,14 +118,14 @@
             height: 80%;
         }
 
-        /* 武將頭像框樣式 */
+        /* 武將頭像框 */
         .portrait-frame {
             aspect-ratio: 1 / 1;
             background: rgba(255,255,255,0.05);
             border: 2px solid rgba(255,255,255,0.1);
             position: relative;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow: hidden;
             display: flex;
             align-items: center;
@@ -122,23 +133,14 @@
         }
 
         .portrait-frame:hover {
-            border-color: rgba(255,255,255,0.5);
-            transform: scale(1.05);
+            border-color: #39FF14;
+            box-shadow: 0 0 25px rgba(57, 255, 20, 0.4);
+            transform: scale(1.08) rotate(1deg);
             z-index: 10;
         }
 
-        .portrait-frame.unlocked {
-            border-color: rgba(57, 255, 20, 0.3);
-            background: linear-gradient(135deg, rgba(57, 255, 20, 0.1), transparent);
-        }
-
-        .portrait-frame.unlocked:hover {
-            border-color: #39FF14;
-            box-shadow: 0 0 25px rgba(57, 255, 20, 0.5);
-        }
-
         .portrait-frame.locked {
-            filter: grayscale(1) opacity(0.4);
+            filter: grayscale(1) brightness(0.4);
         }
 
         .portrait-img {
@@ -153,11 +155,13 @@
             left: 50%;
             transform: translate(-50%, -50%);
             font-size: 32px;
-            opacity: 0.6;
+            opacity: 0.8;
             color: white;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+            z-index: 5;
         }
 
-        .char-name {
+        .char-name-tag {
             position: absolute;
             bottom: 0;
             left: 0;
@@ -169,67 +173,39 @@
             font-weight: 900;
             letter-spacing: 2px;
             text-transform: uppercase;
+            z-index: 6;
         }
 
-        /* 任務列表項樣式 */
-        .mission-item {
+        /* 商城元件樣式 */
+        .store-item-card {
             background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 16px;
-            border-radius: 4px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.2s;
-        }
-
-        .mission-item:hover {
-            background: rgba(255, 255, 255, 0.07);
-            border-color: rgba(57, 255, 20, 0.2);
-        }
-
-        .mission-progress-bg {
-            height: 4px;
-            background: rgba(255, 255, 255, 0.1);
-            width: 100%;
-            border-radius: 2px;
-            margin-top: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            cursor: pointer;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        .mission-progress-fill {
-            height: 100%;
-            background: #39FF14;
-            box-shadow: 0 0 10px #39FF14;
+        .store-item-card:hover {
+            background: rgba(57, 255, 20, 0.05);
+            border-color: #39FF14;
+            box-shadow: 0 0 20px rgba(57, 255, 20, 0.2);
+            transform: translateY(-5px);
         }
 
-        .mission-status-btn {
-            padding: 6px 20px;
-            font-size: 11px;
+        .store-price-tag {
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 1px solid rgba(57, 255, 20, 0.3);
+            padding: 4px 8px;
+            text-align: right;
+            font-size: 10px;
             font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-radius: 2px;
-            transition: all 0.2s;
-        }
-
-        .status-go {
-            border: 1px solid #39FF14;
             color: #39FF14;
         }
 
-        .status-go:hover {
-            background: #39FF14;
-            color: black;
-        }
-
-        .status-done {
-            background: rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.3);
-            pointer-events: none;
-        }
-
-        /* 頂部分頁導覽 */
+        /* 導覽列標籤 */
         .nav-tab {
             font-size: 11px;
             font-weight: 900;
@@ -237,79 +213,30 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            white-space: nowrap;
+            transition: all 0.2s;
             padding: 12px 24px;
-            position: relative;
-            background: transparent;
-        }
-
-        .nav-tab:hover {
-            color: rgba(255, 255, 255, 0.7);
+            border-bottom: 2px solid transparent;
         }
 
         .nav-tab.active {
             color: #39FF14;
             background: linear-gradient(180deg, rgba(57, 255, 20, 0.15) 0%, transparent 100%);
-            text-shadow: 0 0 15px rgba(57, 255, 20, 0.6);
+            border-bottom-color: #39FF14;
         }
 
-        .nav-tab.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: #39FF14;
-            box-shadow: 0 0 15px #39FF14;
-            animation: tabUnderline 0.3s ease-out forwards;
-        }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #39FF14; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
 
-        @keyframes tabUnderline {
-            from { width: 0; left: 50%; }
-            to { width: 100%; left: 0; }
-        }
-
-        .bumper-hint {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 1px 8px;
-            border-radius: 3px;
-            font-size: 10px;
-            font-weight: 900;
-            color: rgba(255, 255, 255, 0.6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            user-select: none;
-        }
-
-        .scanlines {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
-            background-size: 100% 4px;
-            pointer-events: none;
-            z-index: 10;
-            opacity: 0.1;
-        }
-
-        /* 側邊選單 */
-        #sideDrawer {
-            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 100;
-        }
-
-        #drawerOverlay {
-            transition: opacity 0.4s ease;
-            z-index: 90;
-        }
+        /* 側邊選單樣式 */
+        #sideDrawer { transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; }
+        #drawerOverlay { transition: opacity 0.4s ease; z-index: 90; }
 
         .drawer-item {
             transition: all 0.2s ease;
             cursor: pointer;
             border-left: 0px solid #39FF14;
+            position: relative;
         }
 
         .drawer-item:hover {
@@ -318,330 +245,265 @@
             border-left-width: 6px;
             padding-left: 32px;
         }
-
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        /* 自定義滾動條 */
-        .custom-scroll::-webkit-scrollbar {
-            width: 4px;
-        }
-        .custom-scroll::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        .custom-scroll::-webkit-scrollbar-thumb {
-            background: #39FF14;
-            box-shadow: 0 0 10px #39FF14;
-        }
     </style>
 </head>
 <body>
 
     <div class="game-container">
-        <div class="scanlines"></div>
-
         <!-- 側邊選單遮罩 -->
         <div id="drawerOverlay" class="absolute inset-0 bg-black/70 opacity-0 pointer-events-none" onclick="toggleDrawer(false)"></div>
 
         <!-- 側邊選單內容 -->
-        <div id="sideDrawer" class="absolute inset-y-0 left-0 w-80 bg-[#0a0a0a]/95 border-r border-white/10 backdrop-blur-2xl -translate-x-full flex flex-col shadow-[20px_0_50px_rgba(0,0,0,0.5)]">
+        <div id="sideDrawer" class="absolute inset-y-0 left-0 w-80 bg-[#0a0a0a]/95 border-r border-white/10 backdrop-blur-2xl -translate-x-full flex flex-col shadow-2xl">
             <div class="p-10 border-b border-white/5">
                 <div class="text-[10px] font-black text-[#39FF14] tracking-[0.4em] mb-2 uppercase">System Interface</div>
-                <div class="text-2xl font-black italic tracking-tight">LEGEND_WARRIOR_01</div>
+                <div class="text-2xl font-black italic">LEGEND_WARRIOR_01</div>
             </div>
-            
             <div class="flex-1 py-6 flex flex-col">
                 <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">個人資料</div>
+                <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">好友</div>
+                <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">對戰重播</div>
                 <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">排行榜</div>
                 <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">設定</div>
-                <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">通知</div>
-                <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">支援</div>
-                <div class="mt-auto border-t border-white/5">
-                    <div class="drawer-item px-10 py-8 font-black text-sm tracking-[0.2em] uppercase text-white/30 hover:text-red-500 hover:bg-red-500/10">離開遊戲</div>
+                <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase flex items-center justify-between">
+                    <span>通知</span>
+                    <div class="w-2.5 h-2.5 bg-[#ff3b30] rounded-full shadow-[0_0_8px_#ff3b30]"></div>
                 </div>
+                <div class="drawer-item px-10 py-4 font-black text-sm tracking-widest uppercase">支援</div>
+                <div class="mt-auto border-t border-white/5 p-10 font-black text-sm tracking-[0.2em] uppercase text-white/30 hover:text-red-500 cursor-pointer">離開遊戲</div>
             </div>
         </div>
 
-        <!-- 背景層 -->
         <div class="background-layer">
-            <img id="mainBg" src="https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=2070" alt="Background" class="bg-image">
+            <img id="mainBg" src="https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=2070" class="bg-image">
             <div class="bg-overlay"></div>
         </div>
 
-        <!-- 1. 頂部導覽層 -->
-        <nav class="relative z-20 flex flex-col bg-black/85 backdrop-blur-xl border-b border-white/10">
+        <!-- 1. 頂部導覽 -->
+        <nav class="relative z-20 flex flex-col bg-black/85 border-b border-white/10">
             <div class="flex items-center justify-between px-10 py-4">
                 <div class="flex items-center gap-10">
                     <div class="text-4xl font-black italic tracking-tighter text-white">SGF <span class="text-[10px] font-normal not-italic opacity-40 ml-1">LOBBY</span></div>
                     
-                    <div class="flex items-center gap-4 pl-10 border-l border-white/15 cursor-pointer group" onclick="toggleDrawer(true)">
-                        <div class="relative">
-                            <div class="w-11 h-11 rounded-full border-2 border-[#39FF14] overflow-hidden bg-zinc-800 shadow-[0_0_15px_rgba(57,255,20,0.4)] group-hover:shadow-[0_0_25px_rgba(57,255,20,0.7)] transition-all">
-                                <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100" alt="Avatar" class="w-full h-full object-cover">
+                    <div class="flex items-center gap-4 pl-10 border-l border-white/15 cursor-pointer group relative" onclick="toggleDrawer(true)">
+                        <div class="relative w-11 h-11">
+                            <div class="w-full h-full rounded-full border-2 border-[#39FF14] overflow-hidden bg-zinc-800">
+                                <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100" class="w-full h-full object-cover">
                             </div>
-                            <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-[#39FF14] rounded-full border-2 border-black"></div>
+                            <div class="badge-red -bottom-0.5 -right-0.5"></div>
                         </div>
                         <div class="flex flex-col leading-none">
                             <span class="text-[9px] font-black text-[#39FF14] tracking-[0.2em] uppercase mb-1">Rank: Master</span>
-                            <span class="text-sm font-black italic tracking-wide group-hover:text-[#39FF14] transition-colors">LEGEND_WARRIOR_01</span>
+                            <span class="text-sm font-black italic group-hover:text-[#39FF14]">LEGEND_WARRIOR_01</span>
                         </div>
                     </div>
                 </div>
-                
                 <div class="flex items-center gap-10">
-                    <div class="flex items-center gap-4 bg-white/5 px-5 py-1.5 rounded-full border border-white/10">
-                        <span class="text-white/30 text-[10px] font-black uppercase">Gems</span>
-                        <span class="text-[#39FF14] font-mono font-black">12,400</span>
+                    <div class="flex gap-4 bg-white/5 px-5 py-1.5 rounded-full border border-white/10 text-xs font-black">
+                        <span class="text-white/30 uppercase">Gems</span><span class="text-[#39FF14]">12,400</span>
                     </div>
-                    <div class="flex items-center gap-4 bg-white/5 px-5 py-1.5 rounded-full border border-white/10">
-                        <span class="text-white/30 text-[10px] font-black uppercase">Gold</span>
-                        <span class="text-yellow-400 font-mono font-black">850,000</span>
+                    <div class="flex gap-4 bg-white/5 px-5 py-1.5 rounded-full border border-white/10 text-xs font-black">
+                        <span class="text-white/30 uppercase">Gold</span><span class="text-yellow-400">850,000</span>
                     </div>
                 </div>
             </div>
-
-            <div class="flex items-center gap-4 px-10 py-0 bg-white/5 overflow-x-auto no-scrollbar">
-                <div class="bumper-hint">L1</div>
-                <div id="tabContainer" class="flex items-center">
+            <div class="flex items-center gap-2 px-10 bg-white/5 no-scrollbar">
+                <div class="bumper-hint px-2 py-0.5 border border-white/20 rounded text-[10px] font-black opacity-40">L1</div>
+                <div id="tabContainer" class="flex">
                     <span class="nav-tab active" onclick="switchTab('Online')">Online</span>
                     <span class="nav-tab" onclick="switchTab('Offline')">Offline</span>
                     <span class="nav-tab" onclick="switchTab('武將')">武將</span>
                     <span class="nav-tab" onclick="switchTab('通行證')">通行證</span>
                     <span class="nav-tab" onclick="switchTab('任務')">任務</span>
                     <span class="nav-tab" onclick="switchTab('商城')">商城</span>
-                    <span class="nav-tab" onclick="switchTab('社群')">社群</span>
                     <span class="nav-tab" onclick="switchTab('背包')">背包</span>
-                    <span class="nav-tab" onclick="switchTab('設定')">設定</span>
-                    <span class="nav-tab" onclick="switchTab('通知')">通知</span>
                 </div>
-                <div class="bumper-hint">R1</div>
+                <div class="bumper-hint px-2 py-0.5 border border-white/20 rounded text-[10px] font-black opacity-40">R1</div>
             </div>
         </nav>
 
-        <!-- 2. 中央內容層 -->
-        <main class="relative z-20 flex-1 flex items-center px-20">
-            <div class="w-1/3 flex flex-col justify-center h-full">
-                <div id="categoryLabel" class="text-[#39FF14] text-[10px] font-black tracking-[0.5em] mb-6 opacity-80 uppercase">ONLINE MODES</div>
+        <!-- 2. 中央內容區域 -->
+        <main class="relative z-20 flex-1 flex items-center px-20 overflow-hidden">
+            <!-- 左側分類與清單區 -->
+            <div id="leftContentArea" class="w-1/4 flex flex-col justify-center h-full">
+                <div id="categoryLabel" class="text-[#39FF14] text-[10px] font-black tracking-[0.5em] mb-6 uppercase">ONLINE MODES</div>
                 <div id="menuContainer" class="flex flex-col gap-2"></div>
             </div>
 
-            <!-- 右側展示區 (預覽卡片或任務捲軸) -->
-            <div id="rightDisplayArea" class="flex-1 h-full flex items-center justify-end">
-                <!-- 預覽卡片 -->
-                <div id="previewCard" class="w-80 p-6 bg-black/70 border border-white/15 backdrop-blur-xl rounded-xl shadow-2xl transition-all duration-500">
+            <!-- 右側展示與面板區域 -->
+            <div id="rightDisplayArea" class="flex-1 h-full flex flex-col justify-center overflow-hidden">
+                <!-- 預覽卡片 (通用) -->
+                <div id="previewCard" class="w-[340px] p-6 bg-black/70 border border-white/15 backdrop-blur-xl rounded-xl shadow-2xl ml-auto">
                     <div class="flex justify-between items-center mb-5">
-                        <span id="previewLabel" class="text-[10px] font-black tracking-[0.2em] opacity-40 uppercase">System Ready</span>
-                        <span id="statusBadge" class="text-[10px] border border-[#39FF14] text-[#39FF14] px-3 py-0.5 rounded-full font-black">LOBBY</span>
+                        <span id="previewLabel" class="text-[10px] font-black tracking-[0.2em] opacity-40 uppercase">Details</span>
+                        <span id="statusBadge" class="text-[10px] border border-[#39FF14] text-[#39FF14] px-3 py-0.5 rounded-full font-black uppercase">Online</span>
                     </div>
                     <div class="aspect-video bg-zinc-800 rounded-lg overflow-hidden mb-5 border border-white/10">
-                        <img id="previewImg" src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=600" class="w-full h-full object-cover mix-blend-luminosity">
+                        <img id="previewImg" src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=600" class="w-full h-full object-cover">
                     </div>
-                    <h3 id="previewTitle" class="text-xl font-black mb-2 italic">準備就緒</h3>
-                    <p id="previewDesc" class="text-xs text-white/40 leading-relaxed font-medium">切換導航分頁以檢視不同系統的功能列表。</p>
+                    <h3 id="previewTitle" class="text-xl font-black mb-2 italic tracking-tight">準備就緒</h3>
+                    <p id="previewDesc" class="text-xs text-white/40 leading-relaxed">請選擇一個項目以查看詳細資訊。</p>
                 </div>
 
-                <!-- 任務列表面板 (預設隱藏) -->
-                <div id="missionPanel" class="hidden w-[500px] h-[420px] bg-black/70 border border-white/15 backdrop-blur-xl rounded-xl p-6 flex flex-col">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 id="missionPanelTitle" class="text-xl font-black italic text-[#39FF14]">每日任務</h2>
-                        <span class="text-[10px] font-black opacity-40 uppercase tracking-widest">MISSION SCROLL</span>
+                <!-- 任務面板 -->
+                <div id="missionPanel" class="hidden w-[520px] h-[440px] bg-black/70 border border-white/15 backdrop-blur-xl rounded-xl p-8 flex flex-col ml-auto">
+                    <h2 id="missionPanelTitle" class="text-xl font-black italic text-[#39FF14] mb-6">每日任務</h2>
+                    <div id="missionList" class="flex-1 overflow-y-auto custom-scroll flex flex-col gap-3"></div>
+                </div>
+
+                <!-- 商城面板 -->
+                <div id="storePanel" class="hidden w-full h-[540px] flex flex-col gap-6">
+                    <div class="text-[#39FF14] text-[10px] font-black tracking-[0.5em] mb-4 uppercase">MARKETPLACE</div>
+                    <div class="w-full h-[220px] rounded-xl overflow-hidden border border-white/15 relative">
+                        <img src="https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=1200" class="w-full h-full object-cover brightness-75">
+                        <div class="absolute inset-0 bg-gradient-to-r from-black/90 to-transparent flex flex-col justify-center px-12">
+                            <span class="text-[#39FF14] text-[10px] font-black tracking-widest uppercase mb-1">Featured Selection</span>
+                            <h2 class="text-4xl font-black italic uppercase text-white mb-2">青龍武聖：限時典藏外觀</h2>
+                            <p class="text-sm text-white/60 max-w-md leading-relaxed">裝備傳說中的武器，見證武學巔峰。</p>
+                        </div>
                     </div>
-                    <div id="missionList" class="flex-1 overflow-y-auto custom-scroll pr-2 flex flex-col gap-3">
-                        <!-- JavaScript 會在這裡注入任務項目 -->
+                    <div class="flex-1 overflow-y-auto custom-scroll pr-4 mt-2">
+                        <div class="grid grid-cols-5 lg:grid-cols-8 gap-4">
+                            <div class="store-item-card rounded-lg aspect-[4/5] flex items-center justify-center p-4">💎</div>
+                            <div class="store-item-card rounded-lg aspect-[4/5] flex items-center justify-center p-4">💎</div>
+                            <div class="store-item-card rounded-lg aspect-[4/5] flex items-center justify-center p-4">💎</div>
+                            <div class="store-item-card rounded-lg aspect-[4/5] flex items-center justify-center p-4">🪙</div>
+                            <div class="store-item-card rounded-lg aspect-[4/5] flex items-center justify-center p-4">🪙</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
 
-        <!-- 3. 底部資訊層 -->
+        <!-- 3. 底部資訊 -->
         <footer class="relative z-20 h-16 bg-black/95 flex items-center justify-between px-10 border-t border-white/10">
-            <div class="flex items-center gap-5">
-                <div class="w-1.5 h-1.5 bg-[#39FF14] rotate-45 shadow-[0_0_10px_#39FF14]"></div>
-                <div id="descText" class="text-sm font-bold text-white/50 tracking-widest uppercase transition-all duration-300">
-                    PLEASE SELECT A SUB-SYSTEM FROM THE TOP MENU
-                </div>
-            </div>
-            <div class="flex items-center gap-10 text-[10px] font-black tracking-[0.2em] text-white/30">
-                <div class="flex items-center gap-3">
-                    <span class="text-white border border-white/30 px-2 py-0.5 rounded leading-none">ENTER</span>
-                    <span>CONFIRM</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="text-white border border-white/30 px-2 py-0.5 rounded leading-none">ESC</span>
-                    <span>BACK</span>
-                </div>
+            <div id="descText" class="text-sm font-bold text-white/50 tracking-widest uppercase transition-all">READY FOR INPUT</div>
+            <div class="flex items-center gap-10 text-[10px] font-black text-white/30">
+                <div class="flex gap-2"><span class="border border-white/30 px-2 rounded leading-none text-white">ENTER</span> CONFIRM</div>
+                <div class="flex gap-2"><span class="border border-white/30 px-2 rounded leading-none text-white">ESC</span> BACK</div>
             </div>
         </footer>
     </div>
 
     <script>
-        const missionMockData = [
-            { title: '首戰勝利', desc: '在任何線上模式中獲得一場勝利。', progress: 1, total: 1, reward: 'Gems x 50', status: 'done' },
-            { title: '連段大師', desc: '在對戰中達成 20 次以上的連擊。', progress: 15, total: 20, reward: 'Gold x 2000', status: 'go' },
-            { title: '好友集結', desc: '與好友組隊進行一場 2X2 對戰。', progress: 0, total: 1, reward: 'Chest x 1', status: 'go' },
-            { title: '武魂覺醒', desc: '累計消耗 1000 點體力。', progress: 850, total: 1000, reward: 'Gems x 20', status: 'go' },
-            { title: '每日巡邏', desc: '登入遊戲並在大廳停留超過 10 分鐘。', progress: 1, total: 1, reward: 'Gold x 500', status: 'done' },
-            { title: '極致挑戰', desc: '在 Offline 難度下擊敗 AI 對手。', progress: 0, total: 3, reward: 'EXP x 100', status: 'go' }
-        ];
-
-        const tabData = {
-            'Online': { label: 'ONLINE MODES', items: ['排行對戰', '建立房間', '練習'], footer: '與全球玩家即時競技，提升你的全球排名。', bg: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=2070' },
-            'Offline': { label: 'OFFLINE MODES', items: ['Roguelike', 'Arcade Mode', 'Player vs CPU', 'Player vs Player', 'TUTORIAL'], footer: '在本地模式中磨練技巧，或體驗 Roguelike 的隨機挑戰。', bg: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=2070' },
-            '武將': { 
-                label: 'GENERALS ARCHIVE', 
-                viewType: 'grid',
-                items: [
-                    { name: '關羽', unlocked: true, portrait: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=400' },
-                    { name: '張飛', unlocked: true, portrait: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=400' },
-                    { name: '諸葛亮', unlocked: false, portrait: '' },
-                    { name: '趙雲', unlocked: false, portrait: '' },
-                    { name: '夏侯惇', unlocked: false, portrait: '' },
-                    { name: '夏侯淵', unlocked: false, portrait: '' },
-                    { name: '荀彧', unlocked: false, portrait: '' },
-                    { name: '貂蟬', unlocked: false, portrait: '' },
-                    { name: '孫尚香', unlocked: false, portrait: '' },
-                    { name: '呂布', unlocked: false, portrait: '' },
-                    { name: '董卓', unlocked: false, portrait: '' },
-                    { name: '孫堅', unlocked: false, portrait: '' }
-                ], 
-                footer: '檢視武將檔案並配置出戰英雄。', 
-                bg: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&q=80&w=2070' 
-            },
-            '通行證': { label: 'BATTLE PASS', items: ['本月通行證'], footer: '查看本月賽季獎勵，解鎖限定武將與外觀。', bg: 'https://images.unsplash.com/photo-1616110129443-d18c99851a57?auto=format&fit=crop&q=80&w=2070' },
-            '任務': { 
-                label: 'MISSIONS', 
-                viewType: 'mission',
-                items: ['每日', '每週', '每月', '活動', '成就'], 
-                footer: '完成各種目標以獲得 Gems、Gold 與經驗值。', 
-                bg: 'https://images.unsplash.com/photo-1580234811497-9bd7fd0f37a9?auto=format&fit=crop&q=80&w=2070' 
-            },
-            '商城': { label: 'STORE', items: ['限時特惠', '武將商店', '外觀商店', '資源兌換'], footer: '使用 Gems 或 Gold 購買最新的遊戲道具。', bg: 'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?auto=format&fit=crop&q=80&w=2070' },
-            '社群': { label: 'SOCIAL', items: ['好友清單', '家族', '對戰重播', '排行榜'], footer: '管理社交關係，與家族成員互動或查看全球排行榜。', bg: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=2070' },
-            '背包': { label: 'INVENTORY', items: ['查看所有物品', '圖鑑'], footer: '瀏覽目前擁有的素材、道具與解鎖的武將圖鑑。', bg: 'https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80&w=2070' },
-            '設定': { label: 'SETTINGS', items: ['系統設定項目'], footer: '調整顯示、音效、操作按鍵與帳號安全設定。', bg: 'https://images.unsplash.com/photo-1551033406-611cf9a28f67?auto=format&fit=crop&q=80&w=2070' },
-            '通知': { label: 'NOTIFICATIONS', items: ['系統郵件', '活動通知'], footer: '查看最新的系統郵件回饋與領取獎勵。', bg: 'https://images.unsplash.com/photo-1577563908411-5077b6ac7a20?auto=format&fit=crop&q=80&w=2070' }
+        const charData = {
+            '關羽': { portrait: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=400' },
+            '張飛': { portrait: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=400' },
+            '諸葛亮': { portrait: 'https://images.unsplash.com/photo-1599508704512-2f19efd1e35f?q=80&w=400' },
+            '趙雲': { portrait: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=400' },
+            '夏侯惇': { portrait: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=400' },
+            '夏侯淵': { portrait: 'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?q=80&w=400' },
+            '荀彧': { portrait: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?q=80&w=400' },
+            '貂蟬': { portrait: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400' },
+            '孫尚香': { portrait: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?q=80&w=400' },
+            '呂布': { portrait: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400' },
+            '董卓': { portrait: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400' },
+            '孫堅': { portrait: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=400' }
         };
 
-        function switchTab(tabId) {
-            document.querySelectorAll('.nav-tab').forEach(tab => {
-                tab.classList.remove('active');
-                if (tab.innerText === tabId) tab.classList.add('active');
-            });
+        const tabs = {
+            'Online': { label: 'ONLINE MODES', items: ['排行對戰', '建立房間', '練習'], bg: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=2070' },
+            'Offline': { label: 'OFFLINE MODES', items: ['Roguelike', 'Arcade Mode', 'Player vs CPU', 'Player vs Player', 'TUTORIAL'], bg: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070' },
+            '武將': { label: 'GENERALS ARCHIVE', type: 'grid', items: Object.keys(charData), unlocked: ['關羽', '張飛'], bg: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?q=80&w=2070' },
+            '通行證': { label: 'BATTLE PASS', items: ['本月通行證'], bg: 'https://images.unsplash.com/photo-1616110129443-d18c99851a57?auto=format&fit=crop&q=80&w=2070' },
+            '任務': { label: 'MISSIONS', type: 'mission', items: ['每日', '每週', '每月', '成就'], bg: 'https://images.unsplash.com/photo-1580234811497-9bd7fd0f37a9?q=80&w=2070' },
+            '商城': { label: 'MARKETPLACE', type: 'store', bg: 'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?auto=format&fit=crop&q=80&w=2070' },
+            '背包': { label: 'INVENTORY', items: ['持有道具', '圖鑑'], bg: 'https://images.unsplash.com/photo-1586769852044-692d6e3703f0?auto=format&fit=crop&q=80&w=2070' }
+        };
 
-            const data = tabData[tabId];
+        function switchTab(id) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.innerText === id));
+            const data = tabs[id];
             if (!data) return;
 
             document.getElementById('categoryLabel').innerText = data.label;
             document.getElementById('mainBg').src = data.bg;
-            document.getElementById('descText').innerText = data.footer;
-
-            const container = document.getElementById('menuContainer');
-            const previewCard = document.getElementById('previewCard');
-            const missionPanel = document.getElementById('missionPanel');
-            container.innerHTML = '';
             
-            // 頁面佈局控制
-            if (data.viewType === 'grid') {
-                previewCard.classList.add('hidden');
-                missionPanel.classList.add('hidden');
-                container.className = 'grid grid-cols-4 md:grid-cols-6 gap-6 w-[800px] mt-10';
+            const menu = document.getElementById('menuContainer');
+            const left = document.getElementById('leftContentArea');
+            const preview = document.getElementById('previewCard');
+            const mission = document.getElementById('missionPanel');
+            const store = document.getElementById('storePanel');
+            menu.innerHTML = '';
+            
+            if (data.type === 'grid') {
+                left.classList.remove('hidden');
+                left.className = 'w-full h-full flex flex-col justify-center px-10';
+                preview.classList.add('hidden'); 
+                mission.classList.add('hidden'); 
+                store.classList.add('hidden');
+                menu.className = 'grid grid-cols-4 md:grid-cols-6 gap-6 max-w-6xl mx-auto mt-6';
                 
-                data.items.forEach((char, index) => {
-                    const frame = document.createElement('div');
-                    frame.className = `portrait-frame ${char.unlocked ? 'unlocked' : 'locked'}`;
-                    frame.innerHTML = `
-                        ${char.portrait ? `<img src="${char.portrait}" class="portrait-img">` : '<div class="w-full h-full bg-zinc-800/50"></div>'}
-                        ${!char.unlocked ? '<div class="lock-icon">🔒</div>' : ''}
-                        <div class="char-name">${char.name}</div>
+                data.items.forEach(name => {
+                    const isUn = data.unlocked.includes(name);
+                    const f = document.createElement('div');
+                    f.className = `portrait-frame ${isUn ? 'unlocked' : 'locked'}`;
+                    f.innerHTML = `
+                        <img src="${charData[name].portrait}" class="portrait-img">
+                        ${!isUn ? '<div class="lock-icon">🔒</div>' : ''}
+                        <div class="char-name-tag">${name}</div>
                     `;
-                    container.appendChild(frame);
+                    menu.appendChild(f);
                 });
-            } else if (data.viewType === 'mission') {
-                previewCard.classList.add('hidden');
-                missionPanel.classList.remove('hidden');
-                container.className = 'flex flex-col gap-2';
-                
-                data.items.forEach((item, index) => {
+            } else if (data.type === 'mission') {
+                left.classList.remove('hidden');
+                left.className = 'w-1/4 h-full flex flex-col justify-center';
+                preview.classList.add('hidden'); mission.classList.remove('hidden'); store.classList.add('hidden');
+                menu.className = 'flex flex-col gap-2';
+                data.items.forEach((it, idx) => {
                     const div = document.createElement('div');
-                    div.className = `menu-item text-5xl font-black uppercase ${index === 0 ? 'active' : ''}`;
-                    div.innerText = item;
+                    div.className = `menu-item text-5xl font-black uppercase ${idx === 0 ? 'active' : ''}`;
+                    div.innerText = it;
                     div.onclick = () => {
                         document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
                         div.classList.add('active');
-                        renderMissions(item);
+                        renderMissions(it);
                     };
-                    container.appendChild(div);
+                    menu.appendChild(div);
                 });
-                renderMissions('每日'); // 預設顯示每日
+                renderMissions('每日');
+            } else if (data.type === 'store') {
+                left.classList.add('hidden');
+                preview.classList.add('hidden'); mission.classList.add('hidden'); store.classList.remove('hidden');
             } else {
-                previewCard.classList.remove('hidden');
-                missionPanel.classList.add('hidden');
-                container.className = 'flex flex-col gap-2';
-                
-                data.items.forEach((item, index) => {
+                left.classList.remove('hidden');
+                left.className = 'w-1/4 h-full flex flex-col justify-center';
+                preview.classList.remove('hidden'); mission.classList.add('hidden'); store.classList.add('hidden');
+                menu.className = 'flex flex-col gap-2';
+                data.items.forEach((it, idx) => {
                     const div = document.createElement('div');
-                    div.className = `menu-item text-5xl font-black uppercase ${index === 0 ? 'active' : ''}`;
-                    div.innerText = item;
+                    div.className = `menu-item text-5xl font-black uppercase ${idx === 0 ? 'active' : ''}`;
+                    div.innerText = it;
                     div.onclick = () => {
                         document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
                         div.classList.add('active');
                     };
-                    container.appendChild(div);
+                    menu.appendChild(div);
                 });
             }
         }
 
-        function renderMissions(category) {
-            document.getElementById('missionPanelTitle').innerText = category + '任務';
-            const listContainer = document.getElementById('missionList');
-            listContainer.innerHTML = '';
-            
-            missionMockData.forEach((m, i) => {
-                const item = document.createElement('div');
-                item.className = 'mission-item';
-                item.style.animation = `slideIn 0.3s ease-out forwards ${i * 0.05}s`;
-                
-                const progressWidth = (m.progress / m.total) * 100;
-                
-                item.innerHTML = `
-                    <div class="flex-1 pr-6">
-                        <div class="flex justify-between items-end mb-1">
-                            <h4 class="font-black italic text-sm text-white/90">${m.title}</h4>
-                            <span class="text-[10px] font-mono text-white/30">${m.progress}/${m.total}</span>
-                        </div>
-                        <p class="text-[10px] text-white/40 mb-2">${m.desc}</p>
-                        <div class="flex items-center gap-2">
-                            <span class="text-[9px] font-black text-[#39FF14] uppercase">REWARD:</span>
-                            <span class="text-[9px] text-white/60">${category}${m.reward}</span>
-                        </div>
-                        <div class="mission-progress-bg">
-                            <div class="mission-progress-fill" style="width: ${progressWidth}%"></div>
-                        </div>
-                    </div>
-                    <button class="mission-status-btn ${m.status === 'done' ? 'status-done' : 'status-go'}">
-                        ${m.status === 'done' ? '已領取' : '前往'}
-                    </button>
-                `;
-                listContainer.appendChild(item);
-            });
-        }
-
-        function toggleDrawer(isOpen) {
-            const drawer = document.getElementById('sideDrawer');
-            const overlay = document.getElementById('drawerOverlay');
-            if (isOpen) {
-                drawer.style.transform = 'translateX(0)';
-                overlay.style.opacity = '1';
-                overlay.style.pointerEvents = 'auto';
-            } else {
-                drawer.style.transform = 'translateX(-100%)';
-                overlay.style.opacity = '0';
-                overlay.style.pointerEvents = 'none';
+        function renderMissions(cat) {
+            const list = document.getElementById('missionList');
+            list.innerHTML = '';
+            for(let i=1; i<=6; i++) {
+                const d = document.createElement('div');
+                d.className = 'p-4 bg-white/5 border border-white/10 rounded flex justify-between items-center';
+                d.innerHTML = `<div class="text-xs font-black uppercase">${cat}項目 ${i}</div>
+                               <button class="px-3 py-1 border border-[#39FF14] text-[#39FF14] text-[10px] font-black">前往</button>`;
+                list.appendChild(d);
             }
         }
 
-        window.onload = () => {
-            switchTab('Online');
-        };
+        function toggleDrawer(open) {
+            const dr = document.getElementById('sideDrawer');
+            const ov = document.getElementById('drawerOverlay');
+            dr.style.transform = open ? 'translateX(0)' : 'translateX(-100%)';
+            ov.style.opacity = open ? '1' : '0';
+            ov.style.pointerEvents = open ? 'auto' : 'none';
+        }
+
+        window.onload = () => switchTab('Online');
     </script>
 </body>
 </html>
