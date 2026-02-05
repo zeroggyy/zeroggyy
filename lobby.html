@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGF Lobby UI - Fix Offline Layout</title>
+    <title>SGF Lobby UI - Direct Launch</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700;900&display=swap');
@@ -93,7 +93,7 @@
             padding-left: 20px;
             width: fit-content;
             color: rgba(255, 255, 255, 0.4);
-            white-space: nowrap; /* 確保內容一行顯示 */
+            white-space: nowrap;
         }
 
         .menu-item:hover, .menu-item.active {
@@ -245,9 +245,59 @@
             border-left-width: 6px;
             padding-left: 32px;
         }
+
+        /* 模擬啟動特效遮罩 */
+        #launchOverlay {
+            position: fixed;
+            inset: 0;
+            background: black;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        #launchOverlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .loading-bar {
+            width: 200px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading-bar::after {
+            content: '';
+            position: absolute;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: #39FF14;
+            box-shadow: 0 0 10px #39FF14;
+            animation: loading-slide 1.5s infinite;
+        }
+
+        @keyframes loading-slide {
+            to { left: 100%; }
+        }
     </style>
 </head>
 <body>
+
+    <!-- 模擬遊戲啟動遮罩 -->
+    <div id="launchOverlay">
+        <div class="flex flex-col items-center gap-4">
+            <div class="text-[10px] font-black text-[#39FF14] tracking-[0.5em] uppercase animate-pulse">Initializing Roguelike Mode</div>
+            <div class="loading-bar"></div>
+        </div>
+    </div>
 
     <div class="game-container">
         <!-- 側邊選單遮罩 -->
@@ -342,7 +392,7 @@
                         <img id="previewImg" src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=600" class="w-full h-full object-cover">
                     </div>
                     <h3 id="previewTitle" class="text-xl font-black mb-2 italic tracking-tight">準備就緒</h3>
-                    <p id="previewDesc" class="text-xs text-white/40 leading-relaxed">請選擇一個項目以查看詳細資訊。</p>
+                    <p id="previewDesc" class="text-xs text-white/40 leading-relaxed font-medium">請選擇一個項目以查看詳細資訊。</p>
                 </div>
 
                 <!-- 任務面板 -->
@@ -377,7 +427,7 @@
 
         <!-- 3. 底部資訊 -->
         <footer class="relative z-20 h-16 bg-black/95 flex items-center justify-between px-10 border-t border-white/10">
-            <div id="descText" class="text-sm font-bold text-white/50 tracking-widest uppercase transition-all">READY FOR INPUT</div>
+            <div id="descText" class="text-sm font-bold text-white/50 tracking-widest uppercase transition-all duration-300">READY FOR INPUT</div>
             <div class="flex items-center gap-10 text-[10px] font-black text-white/30">
                 <div class="flex gap-2"><span class="border border-white/30 px-2 rounded leading-none text-white">ENTER</span> CONFIRM</div>
                 <div class="flex gap-2"><span class="border border-white/30 px-2 rounded leading-none text-white">ESC</span> BACK</div>
@@ -429,9 +479,7 @@
             if (data.type === 'grid') {
                 left.classList.remove('hidden');
                 left.className = 'w-full h-full flex flex-col justify-center px-10';
-                preview.classList.add('hidden'); 
-                mission.classList.add('hidden'); 
-                store.classList.add('hidden');
+                preview.classList.add('hidden'); mission.classList.add('hidden'); store.classList.add('hidden');
                 menu.className = 'grid grid-cols-4 md:grid-cols-6 gap-6 max-w-6xl mx-auto mt-6';
                 
                 data.items.forEach(name => {
@@ -475,8 +523,12 @@
                     div.className = `menu-item text-5xl font-black uppercase ${idx === 0 ? 'active' : ''}`;
                     div.innerText = it;
                     div.onclick = () => {
-                        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-                        div.classList.add('active');
+                        if (it === 'Roguelike') {
+                            launchGame('https://zeroggyy.github.io/zeroggyy/roguelike.html');
+                        } else {
+                            document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+                            div.classList.add('active');
+                        }
                     };
                     menu.appendChild(div);
                 });
@@ -501,6 +553,21 @@
             dr.style.transform = open ? 'translateX(0)' : 'translateX(-100%)';
             ov.style.opacity = open ? '1' : '0';
             ov.style.pointerEvents = open ? 'auto' : 'none';
+        }
+
+        // 直接開啟網頁跳轉模擬
+        function launchGame(url) {
+            const overlay = document.getElementById('launchOverlay');
+            overlay.classList.add('active');
+            
+            // 更新狀態列
+            document.getElementById('descText').innerText = "BOOTING: ROGUELIKE_MODE.EXE";
+            document.getElementById('descText').style.color = "#39FF14";
+
+            // 模擬載入 1 秒後進行跳轉
+            setTimeout(() => {
+                window.location.href = url;
+            }, 1200);
         }
 
         window.onload = () => switchTab('Online');
