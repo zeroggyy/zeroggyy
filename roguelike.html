@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亂世征途 - 操作模擬示意</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #0c0a09;
+            color: #e7e5e4;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 核心修正：讓容器能隨視窗放大縮小，且維持 16:9 */
+        .game-container {
+            position: relative;
+            /* 使用視窗寬高度計算最大比例填滿 */
+            width: min(95vw, calc(95vh * 16 / 9));
+            aspect-ratio: 16 / 9;
+            background-color: #000;
+            border: 2px solid #292524;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            flex-direction: column;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* 動畫效果 */
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .skew-btn {
+            transform: skewX(-12deg);
+            transition: all 0.2s;
+        }
+        .skew-btn:hover {
+            transform: skewX(-12deg) scale(1.03);
+        }
+        .skew-btn:active {
+            transform: skewX(-12deg) scale(0.97);
+        }
+
+        .hp-bar {
+            height: 1.5vw;
+            max-height: 14px;
+            background: #1c1917;
+            border: 1px solid rgba(255,255,255,0.2);
+            position: relative;
+        }
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc2626, #f87171);
+            transition: width 0.3s ease;
+        }
+
+        /* 節點樣式 - 使用相對於容器寬度的單位，使其跟著放大 */
+        .node-btn {
+            width: 6vw;
+            height: 6vw;
+            max-width: 60px;
+            max-height: 60px;
+            border-radius: 50%;
+            border: 3px solid #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            position: relative;
+            cursor: pointer;
+        }
+        .node-btn.active {
+            border-color: #facc15;
+            background: #dc2626;
+            box-shadow: 0 0 20px rgba(220, 38, 38, 0.6);
+            animation: bounce 1s infinite alternate;
+        }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+
+        /* 六角形天賦節點 */
+        .talent-node {
+            width: 3.5vw;
+            height: 4vw;
+            max-width: 36px;
+            max-height: 42px;
+            background: #292524;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #57534e;
+            position: relative;
+            z-index: 10;
+        }
+        .talent-node.locked { opacity: 0.4; filter: grayscale(1); }
+        .talent-node.unlocked { background: #57534e; border-color: #a8a29e; }
+        .talent-node.active { background: #dc2626; border-color: #fef08a; box-shadow: 0 0 10px rgba(220,38,38,0.5); }
+        .talent-node:hover { transform: scale(1.1); filter: brightness(1.2); }
+        .talent-node i { font-size: 0.7rem; }
+
+        .tree-line {
+            stroke: #333;
+            stroke-width: 1.5;
+            fill: none;
+        }
+        .tree-line.active {
+            stroke: #dc2626;
+            stroke-width: 2;
+        }
+
+        .event-option {
+            width: 100%;
+            text-align: left;
+            padding: 1.2% 2%;
+            margin-bottom: 0.8%;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+            font-size: 1.4vw;
+            max-font-size: 14px;
+        }
+        .option-gold { background: rgba(234, 179, 8, 0.15); border-color: #eab308; color: #fde047; }
+        .option-gold:hover { background: rgba(234, 179, 8, 0.3); }
+        .option-red { background: rgba(220, 38, 38, 0.05); border-color: #991b1b; color: #ef4444; opacity: 0.5; cursor: not-allowed; }
+        .option-blue { background: rgba(37, 99, 235, 0.15); border-color: #2563eb; color: #93c5fd; }
+        .option-blue:hover { background: rgba(37, 99, 235, 0.3); }
+
+        .op-hint {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #222;
+            font-size: 0.8vw;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        /* 選角網格與彈窗 */
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 4vw;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .hero-avatar {
+            aspect-ratio: 1 / 1;
+            background-size: cover;
+            background-position: center;
+            border: 2px solid #222;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+            filter: grayscale(0.5);
+        }
+        .hero-avatar.selected {
+            border: 2px solid #dc2626;
+            box-shadow: 0 0 15px rgba(220, 38, 38, 0.6);
+            filter: grayscale(0);
+            z-index: 10;
+            transform: scale(1.05);
+        }
+        .hero-avatar.locked {
+            filter: grayscale(1) brightness(0.4);
+            cursor: not-allowed;
+        }
+        .hero-avatar .lock-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255,255,255,0.5);
+        }
+        .hero-name-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            font-size: 0.6vw;
+            text-align: center;
+            padding: 2px 0;
+            font-weight: bold;
+        }
+
+        /* 文字縮放 */
+        .text-huge { font-size: 6vw; }
+        .text-big { font-size: 3vw; }
+        .text-normal { font-size: 1.5vw; }
+        .text-tiny { font-size: 0.8vw; }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        
+        <!-- 1. 主選單 -->
+        <div id="screen-main" class="screen active items-center justify-center bg-gradient-to-br from-stone-900 to-black p-10 fade-in">
+            <h1 class="text-huge font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-yellow-500 drop-shadow-lg mb-2">亂世征途</h1>
+            <p class="text-stone-500 tracking-[0.6em] text-tiny uppercase mb-12">Dynasty Conquest: STS Version</p>
+            
+            <div class="flex flex-col gap-4 w-[25%] min-w-[200px]">
+                <!-- [可操作] 開始征途 -->
+                <button onclick="changeScreen('screen-prep')" class="skew-btn bg-white text-black py-2 px-6 text-left relative overflow-hidden group shadow-[0_0_20px_rgba(255,255,255,0.15)]">
+                    <div class="font-black text-xl italic uppercase">開始征途</div>
+                    <div class="text-[9px] font-bold text-red-600 uppercase">Start Adventure</div>
+                </button>
+                
+                <!-- [可操作] 遊歷天賦 -->
+                <button onclick="changeScreen('screen-talents')" class="skew-btn bg-stone-100 text-stone-900 py-2 px-6 text-left border border-white shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                    <div class="font-bold text-lg italic uppercase">遊歷天賦</div>
+                    <div class="text-[9px] text-stone-500 uppercase font-black">Talent Tree</div>
+                </button>
+                
+                <!-- [不可操作] 戰魂印記 -->
+                <button class="skew-btn bg-stone-800 text-stone-500 py-2 px-6 text-left border border-stone-700 opacity-40 cursor-not-allowed">
+                    <div class="font-bold text-lg italic uppercase">戰魂印記</div>
+                    <div class="text-[9px] text-stone-600 uppercase">Battle Sigils</div>
+                </button>
+
+                <!-- [可操作] 回到主畫面 -->
+                <button onclick="location.href='https://zeroggyy.github.io/zeroggyy/lobby.html'" class="skew-btn bg-stone-100 text-stone-900 py-2 px-6 text-left border border-white shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                    <div class="font-bold text-lg italic uppercase">回到主畫面</div>
+                    <div class="text-[9px] text-stone-500 uppercase font-black">Return to Lobby</div>
+                </button>
+            </div>
+
+            <div class="absolute bottom-[10%] right-10 text-right">
+                <div class="text-tiny text-stone-500 font-bold tracking-widest uppercase mb-1">可用天賦點數</div>
+                <div class="text-3xl font-black text-red-500 italic talent-points-display">12</div>
+            </div>
+        </div>
+
+        <!-- 2. 遊歷天賦技能樹 -->
+        <div id="screen-talents" class="screen bg-zinc-950 p-6 fade-in">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <h2 class="text-big font-black italic text-red-600 uppercase tracking-tighter">遊歷天賦樹</h2>
+                    <p class="text-tiny text-stone-500 tracking-widest font-bold">META PROGRESSION TREE</p>
+                </div>
+                <div class="bg-stone-900 border border-stone-800 px-4 py-1 rounded flex flex-col items-end">
+                    <span class="text-[8px] text-stone-500 font-black uppercase">可用點數</span>
+                    <span class="text-2xl font-black text-red-500 italic talent-points-display">12</span>
+                </div>
+            </div>
+
+            <div class="flex gap-2 mb-3">
+                <button class="px-4 py-1 bg-red-600 text-white text-[9px] font-black italic skew-btn">戰鬥 🔴</button>
+                <button class="px-4 py-1 bg-stone-800 text-stone-500 text-[9px] font-black italic skew-btn">事件 🔵</button>
+                <button class="px-4 py-1 bg-stone-800 text-stone-500 text-[9px] font-black italic skew-btn">休整 🟢</button>
+                <button class="px-4 py-1 bg-stone-800 text-stone-500 text-[9px] font-black italic skew-btn">商店 🟣</button>
+            </div>
+
+            <div class="flex-1 relative bg-stone-900/30 rounded-lg border border-stone-800 flex items-center justify-center">
+                <div class="relative w-full h-full">
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none">
+                        <line x1="20%" y1="50%" x2="40%" y2="30%" class="tree-line active" />
+                        <line x1="20%" y1="50%" x2="40%" y2="50%" class="tree-line active" />
+                        <line x1="20%" y1="50%" x2="40%" y2="70%" class="tree-line" />
+                        <line x1="40%" y1="30%" x2="60%" y2="20%" class="tree-line" />
+                        <line x1="40%" y1="50%" x2="60%" y2="50%" class="tree-line active" />
+                        <line x1="40%" y1="70%" x2="60%" y2="80%" class="tree-line" />
+                    </svg>
+
+                    <div onclick="showTalentInfo('強健體魄', '提升基礎體力 20 點', 1, true)" class="absolute left-[18%] top-[45%] talent-node active"><i class="fas fa-heart"></i></div>
+                    <div onclick="showTalentInfo('鍛體上修', '提升上段攻擊力 2 點', 1, true)" class="absolute left-[38%] top-[25%] talent-node active"><i class="fas fa-sword"></i></div>
+                    <div onclick="showTalentInfo('鍛體中修', '提升中段攻擊力 2 點', 1, true)" class="absolute left-[38%] top-[45%] talent-node active"><i class="fas fa-crosshairs"></i></div>
+                    <div onclick="showTalentInfo('鍛體下修', '提升下段攻擊力 2 點', 1, false)" class="absolute left-[38%] top-[65%] talent-node unlocked"><i class="fas fa-shoe-prints"></i></div>
+                    <div onclick="showTalentInfo('摔拿精進', '提升摔技攻擊力 2 點', 2, false)" class="absolute left-[58%] top-[15%] talent-node locked"><i class="fas fa-user-friends"></i></div>
+                    <div onclick="showTalentInfo('終極昇華', '全屬性大幅提升 10%', 5, false)" class="absolute left-[58%] top-[45%] talent-node locked"><i class="fas fa-star"></i></div>
+                    <div onclick="showTalentInfo('鐵壁根基', '提升防禦力 5 點', 3, false)" class="absolute left-[58%] top-[75%] talent-node locked"><i class="fas fa-shield-alt"></i></div>
+
+                    <div id="talent-detail" class="hidden absolute right-10 top-10 w-64 bg-black/95 border-2 border-red-600 p-4 fade-in z-50 shadow-2xl">
+                        <h4 id="td-name" class="text-base font-black text-red-500 italic mb-1 uppercase tracking-tighter">技能名稱</h4>
+                        <p id="td-desc" class="text-xs text-stone-400 mb-4">技能說明文字。</p>
+                        <div class="flex justify-between items-end">
+                            <div>
+                                <span class="text-[9px] text-stone-500 font-bold block uppercase">消耗點數</span>
+                                <span id="td-cost" class="text-xl font-black text-white">1</span>
+                            </div>
+                            <button id="td-btn" class="px-4 py-2 bg-red-600 text-white font-black text-[10px] skew-btn shadow-lg">確認升級</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="py-4 flex justify-center">
+                <button onclick="changeScreen('screen-main')" class="px-12 py-1.5 border border-stone-700 text-stone-500 font-bold hover:text-white hover:border-white transition-all uppercase tracking-widest text-[10px]">返回主選單 (BACK)</button>
+            </div>
+        </div>
+
+        <!-- 3. 劇本選角 -->
+        <div id="screen-prep" class="screen p-10 bg-zinc-950 fade-in">
+            <h2 class="text-big font-black italic text-red-600 mb-6 border-l-8 border-red-600 pl-4 uppercase tracking-tighter">準備出征</h2>
+            <div class="grid grid-cols-2 gap-10 flex-1 px-10">
+                <!-- 左側：劇本資訊 -->
+                <div class="bg-stone-900 rounded-lg border border-stone-800 p-8 flex flex-col shadow-inner">
+                    <div class="text-red-500 font-bold text-sm mb-1 uppercase tracking-widest">當前劇本</div>
+                    <div class="text-4xl font-black mb-4 italic">黃巾之亂 (普通)</div>
+                    <p class="text-normal text-stone-500 leading-relaxed mb-6 italic">亂世之始。蒼天已死，黃天當立！玩家將率領部眾對抗張角兄弟及其信徒。</p>
+                    <div class="mt-auto space-y-3">
+                        <div class="flex justify-between border-b border-stone-800 pb-2 text-sm font-bold italic">
+                            <span class="text-stone-500 uppercase">關卡深度</span><span>3 區域 / 10 節點</span>
+                        </div>
+                        <div class="flex justify-between border-b border-stone-800 pb-2 text-sm font-bold italic">
+                            <span class="text-stone-500 uppercase">預計獎勵</span><span class="text-yellow-500 font-black">良品戰魂印記</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 右側：出戰武將預覽 -->
+                <div class="bg-stone-900 rounded-lg border border-stone-800 p-8 flex flex-col items-center justify-center relative overflow-hidden group">
+                    <div class="absolute top-4 left-6 text-red-500 font-black text-xs uppercase tracking-widest">出戰先行 (LEAD GENERAL)</div>
+                    
+                    <div id="prep-hero-preview" class="w-48 h-48 rounded-full border-4 border-stone-800 bg-stone-950 flex items-center justify-center mb-6 shadow-2xl overflow-hidden bg-cover bg-center transition-all duration-500" style="background-image: url('https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=400&auto=format&fit=crop');">
+                    </div>
+
+                    <div class="text-center mb-8">
+                        <div id="prep-hero-name" class="text-4xl font-black italic text-white tracking-tighter">趙雲 (子龍)</div>
+                        <div id="prep-hero-weapon" class="text-sm text-stone-400 font-bold uppercase tracking-[0.2em] mt-2 italic">Weapon: 豪龍膽</div>
+                    </div>
+
+                    <div class="flex flex-col gap-3 w-full max-w-[280px]">
+                        <button onclick="openHeroModal()" class="skew-btn bg-stone-800 text-stone-200 py-3 border border-stone-700 font-black italic uppercase tracking-widest text-sm hover:bg-stone-700">
+                            <i class="fas fa-users mr-2"></i> 選擇武將
+                        </button>
+                        <button onclick="changeScreen('screen-map')" class="skew-btn bg-red-600 text-white py-4 font-black text-2xl shadow-xl shadow-red-900/20 hover:bg-red-500">
+                            正式出兵！
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 武將選擇彈窗 (Modal) -->
+        <div id="hero-modal" class="modal-overlay">
+            <div class="bg-stone-900 border-2 border-red-600 w-full max-w-4xl p-8 flex flex-col shadow-[0_0_100px_rgba(220,38,38,0.2)] animate-in zoom-in duration-300">
+                <div class="flex justify-between items-start mb-6 border-b border-stone-800 pb-4">
+                    <div>
+                        <h3 class="text-3xl font-black italic text-white uppercase tracking-tighter">武將名錄 (GENERALS ARCHIVE)</h3>
+                        <p class="text-stone-500 text-[10px] tracking-widest font-bold">SELECT YOUR INITIAL CHARACTER</p>
+                    </div>
+                    <button onclick="closeHeroModal()" class="text-stone-600 hover:text-white transition-colors">
+                        <i class="fas fa-times fa-2x"></i>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-5 gap-8 flex-1">
+                    <div class="col-span-3">
+                        <div class="grid grid-cols-4 gap-2">
+                            <div onclick="selectHero('GuanYu')" id="hero-GuanYu" class="hero-avatar" style="background-image: url('https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=200&auto=format&fit=crop');">
+                                <div class="hero-name-label">關羽</div>
+                            </div>
+                            <div onclick="selectHero('ZhangFei')" id="hero-ZhangFei" class="hero-avatar" style="background-image: url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=200&auto=format&fit=crop');">
+                                <div class="hero-name-label">張飛</div>
+                            </div>
+                            <div onclick="selectHero('ZhaoYun')" id="hero-ZhaoYun" class="hero-avatar selected" style="background-image: url('https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=200&auto=format&fit=crop');">
+                                <div class="hero-name-label">趙雲</div>
+                            </div>
+                            <div class="hero-avatar locked"><i class="fas fa-lock lock-icon"></i><div class="hero-name-label">諸葛亮</div></div>
+                            <div class="hero-avatar locked"><i class="fas fa-lock lock-icon"></i><div class="hero-name-label">夏侯惇</div></div>
+                            <div class="hero-avatar locked"><i class="fas fa-lock lock-icon"></i><div class="hero-name-label">夏侯淵</div></div>
+                            <div class="hero-avatar locked"><i class="fas fa-lock lock-icon"></i><div class="hero-name-label">貂蟬</div></div>
+                            <div class="hero-avatar locked"><i class="fas fa-lock lock-icon"></i><div class="hero-name-label">呂布</div></div>
+                        </div>
+                    </div>
+
+                    <div class="col-span-2 bg-black/40 rounded p-6 flex flex-col border border-stone-800">
+                        <div id="modal-hero-name" class="text-4xl font-black italic tracking-tighter text-red-600 mb-1">趙雲 (子龍)</div>
+                        <div id="modal-hero-weapon" class="text-xs text-stone-500 font-black uppercase tracking-widest border-b border-stone-800 pb-4 mb-6">Weapon: 豪龍膽</div>
+                        
+                        <div class="space-y-4 flex-1">
+                            <div class="bg-stone-900/80 p-3 rounded border-l-4 border-red-600">
+                                <div class="text-[9px] text-red-500 font-black uppercase mb-1">天生技 (Passive)</div>
+                                <div id="modal-hero-skill" class="text-xs font-bold text-stone-200">龍膽先鋒：起始等級+2</div>
+                            </div>
+                        </div>
+
+                        <button onclick="closeHeroModal()" class="mt-auto w-full py-4 bg-white text-black font-black italic skew-btn shadow-lg uppercase text-lg">
+                            確定選取 (CONFIRM)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. 節點地圖 -->
+        <div id="screen-map" class="screen items-center bg-zinc-950 p-8 fade-in">
+            <div class="w-full flex justify-between items-center mb-10 px-6">
+                <div class="flex gap-4">
+                    <div class="flex items-center gap-4 bg-stone-900 px-4 py-2 rounded border border-stone-700">
+                        <div id="party-avatar-initial" class="w-10 h-10 rounded bg-stone-800 flex items-center justify-center font-black text-lg">趙</div>
+                        <div class="w-32 h-2 bg-stone-950 rounded-full overflow-hidden border border-stone-800">
+                            <div id="hp-player" class="h-full bg-red-600" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-10 font-black italic uppercase">
+                    <div class="text-yellow-500 text-2xl">🪙 <span id="gold-count">150</span></div>
+                    <div class="text-stone-500 text-sm tracking-[0.3em] font-bold">NODE: <span id="node-index">1</span> / 10</div>
+                </div>
+            </div>
+
+            <div class="flex-1 w-full flex items-center justify-between px-20 relative">
+                <div class="absolute left-32 right-32 h-0.5 bg-stone-800 top-1/2 -translate-y-1/2 opacity-30"></div>
+                
+                <div class="flex flex-col items-center gap-6 z-10">
+                    <button onclick="battleNode()" class="node-btn active"><i class="fas fa-swords fa-2x"></i></button>
+                    <span class="text-xs font-bold text-red-500 tracking-widest uppercase bg-black px-3">切磋戰鬥</span>
+                </div>
+                <div class="flex flex-col items-center gap-6 z-10">
+                    <button onclick="changeScreen('screen-shop')" class="node-btn border-stone-700 bg-stone-900 opacity-90"><i class="fas fa-store fa-2x text-yellow-600"></i></button>
+                    <span class="text-xs font-bold text-stone-500 tracking-widest uppercase bg-black px-3">黑市商人</span>
+                </div>
+                <div class="flex flex-col items-center gap-6 z-10">
+                    <button onclick="changeScreen('screen-event')" class="node-btn border-stone-700 bg-stone-900 opacity-90"><i class="fas fa-scroll fa-2x text-blue-400"></i></button>
+                    <span class="text-xs font-bold text-stone-500 tracking-widest uppercase bg-black px-3">隨機奇遇</span>
+                </div>
+                <div class="flex flex-col items-center gap-6 z-10 ml-12">
+                    <button onclick="bossNode()" class="node-btn node-boss border-purple-400 bg-purple-900 shadow-xl"><i class="fas fa-skull-crossbones fa-3x text-purple-200"></i></button>
+                    <span class="text-xs font-black text-purple-500 tracking-widest uppercase bg-black px-3 animate-pulse">最終魔王</span>
+                </div>
+            </div>
+
+            <div class="mt-8">
+                <button onclick="changeScreen('screen-main')" class="text-[10px] text-stone-800 font-black uppercase tracking-[0.5em] hover:text-stone-600 transition-colors">棄賽退出 (TERMINATE RUN)</button>
+            </div>
+        </div>
+
+        <!-- 6. 戰鬥畫面 -->
+        <div id="screen-battle" class="screen relative items-center justify-center bg-zinc-900 overflow-hidden fade-in">
+            <div id="battle-bg" class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1000&auto=format&fit=crop')] bg-cover bg-center opacity-20 grayscale"></div>
+            
+            <div class="absolute top-16 left-12 w-96">
+                <div class="flex justify-between text-xs font-black italic mb-2 uppercase text-blue-400"><span id="battle-player-name">趙雲 (PLAYER)</span><span>3v3 TEAM</span></div>
+                <div class="hp-bar w-full"><div class="hp-fill w-full"></div></div>
+            </div>
+
+            <div class="absolute top-16 right-12 w-96 text-right">
+                <div class="flex justify-between text-xs font-black italic mb-2 uppercase text-red-500"><span id="enemy-name">黃巾小將</span><span id="enemy-lv">LV. 3</span></div>
+                <div class="hp-bar w-full"><div class="hp-fill w-1/2 float-right bg-gradient-to-l from-red-600 to-red-400" id="enemy-hp-bar"></div></div>
+            </div>
+
+            <div class="z-10 flex flex-col items-center">
+                <div id="battle-title" class="text-huge font-black italic text-white drop-shadow-[0_0_50px_rgba(255,255,255,0.4)] skew-x-[-15deg] mb-12 animate-pulse">FIGHT!</div>
+                <button onclick="handleWin()" class="px-20 py-4 bg-red-600 text-white font-black italic rounded-full border-b-8 border-red-900 shadow-2xl text-2xl uppercase active:translate-y-2 active:border-b-0 transition-all">戰勝對手</button>
+            </div>
+        </div>
+
+        <!-- 7. 商店畫面 -->
+        <div id="screen-shop" class="screen p-12 bg-zinc-950 fade-in">
+            <div class="flex justify-between items-end mb-10">
+                <h3 class="text-4xl font-black italic text-yellow-500 uppercase tracking-tighter">隱世鐵鋪 & 商店</h3>
+                <div class="text-3xl font-bold text-yellow-500 tracking-widest underline decoration-yellow-500/30 underline-offset-8 font-mono">🪙 <span class="shop-gold">150</span></div>
+            </div>
+            <div class="grid grid-cols-2 gap-12 flex-1">
+                <div class="bg-stone-900/50 rounded-xl border border-stone-800 p-8 flex flex-col">
+                    <div class="text-xs font-black text-stone-500 mb-6 uppercase tracking-widest italic border-b border-stone-800 pb-2">武器淬鍊 (WEAPON FORGING)</div>
+                    <div class="bg-black/50 p-6 rounded border border-stone-800 flex-1 mb-6 flex flex-col">
+                        <div class="text-xl font-black italic mb-6 flex justify-between"><span id="shop-weapon-name">豪龍膽</span><span class="text-yellow-600">★★★</span></div>
+                        <div class="space-y-3 flex-1">
+                            <div class="bg-stone-950 px-4 py-2 text-xs text-green-400 font-mono flex justify-between rounded border border-green-900/30"><span>[基礎物攻]</span><span>+12.0%</span></div>
+                            <div class="bg-stone-950 px-4 py-2 text-xs text-stone-700 font-mono flex justify-between rounded border border-dashed border-stone-800 italic"><span>[未解鎖]</span><span>等待淬鍊</span></div>
+                        </div>
+                    </div>
+                    <button class="w-full py-4 bg-stone-200 text-black font-black italic rounded uppercase text-lg hover:bg-white transition-colors">隨機洗鍊 (💰 40)</button>
+                </div>
+                <div class="bg-stone-900/50 rounded-xl border border-stone-800 p-8 flex flex-col">
+                    <div class="text-xs font-black text-stone-500 mb-6 uppercase tracking-widest italic border-b border-stone-800 pb-2">奇物與道具 (RELICS)</div>
+                    <div class="grid grid-cols-1 gap-4 flex-1">
+                        <div class="bg-stone-800 p-4 rounded flex justify-between items-center border border-transparent hover:border-yellow-500 cursor-pointer group transition-all">
+                            <div><div class="font-black text-sm group-hover:text-yellow-500">白虎牙掛件</div><div class="text-[10px] text-stone-500 uppercase font-bold">暴擊率 +5%</div></div>
+                            <div class="text-yellow-500 font-black italic text-lg">💰 60</div>
+                        </div>
+                    </div>
+                    <button onclick="changeScreen('screen-map')" class="mt-auto w-full py-3 border-2 border-stone-700 text-stone-500 font-black uppercase text-xs tracking-[0.4em] hover:text-white hover:border-white transition-colors">離開區域 (LEAVE)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. 事件畫面 -->
+        <div id="screen-event" class="screen flex-row bg-zinc-950 fade-in">
+            <div class="w-1/3 h-full bg-[url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1000&auto=format&fit=crop')] bg-cover bg-center opacity-30 grayscale border-r border-stone-900 shadow-2xl z-10"></div>
+            <div class="flex-1 p-16 flex flex-col justify-center">
+                <div class="mb-12">
+                    <div class="text-stone-600 text-xs font-black tracking-widest uppercase mb-2">RANDOM ENCOUNTER</div>
+                    <h3 class="text-big font-black italic text-red-600 mb-3 tracking-tighter uppercase">杏林妙手</h3>
+                    <div class="w-24 h-1 bg-red-600 mb-8"></div>
+                    <p class="text-normal text-stone-300 leading-relaxed italic">
+                        行軍途中，你遇見遠近聞名的神醫。他主動為你的隊伍施針開方。溫熱的藥力迅速滲入經脈，士氣與體力都得到恢復。
+                    </p>
+                </div>
+                
+                <div class="space-y-4">
+                    <button onclick="changeScreen('screen-map'); addGold(-20);" class="event-option option-gold">
+                        <div class="flex justify-between items-center"><span>1. 診治傷勢 (消耗 20 金幣)</span><span class="text-[10px] uppercase tracking-widest font-black opacity-60">RECOVER HP</span></div>
+                    </button>
+                    <button class="event-option option-red">
+                        <div class="flex justify-between items-center"><span>2. 重金求藥 (消耗 200 金幣)</span><span class="text-[10px] uppercase tracking-widest font-black">LACK OF GOLD</span></div>
+                    </button>
+                    <button onclick="changeScreen('screen-map')" class="event-option option-blue">
+                        <span>3. 謝絕治療，禮貌離去</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 9. 結算畫面 -->
+        <div id="screen-result" class="screen items-center justify-center bg-black p-16 fade-in text-center">
+            <div class="text-yellow-500 mb-10 animate-bounce"><i class="fas fa-trophy fa-7x"></i></div>
+            <h2 class="text-huge font-black italic text-white tracking-tighter mb-4 uppercase">征途達成</h2>
+            <p class="text-stone-500 uppercase tracking-[0.8em] mb-16 text-sm font-bold opacity-60">Settlement Result Summary</p>
+            
+            <div class="w-[30rem] space-y-6 mx-auto bg-zinc-900/30 p-10 rounded-2xl border border-white/5">
+                <div class="flex justify-between items-center border-b border-stone-800 pb-4">
+                    <span class="text-stone-500 font-black uppercase tracking-[0.2em] text-xs">擊敗武將數</span>
+                    <span class="font-mono text-3xl text-white italic" id="stat-kills">12</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-stone-800 pb-4">
+                    <span class="text-stone-500 font-black uppercase tracking-[0.2em] text-xs">獲取奇物數</span>
+                    <span class="font-mono text-3xl text-white italic">4</span>
+                </div>
+                <div class="flex justify-between items-center pt-8">
+                    <span class="text-red-600 font-black uppercase tracking-tighter italic text-xl">獲得遊歷經驗 (EXP)</span>
+                    <span class="font-mono text-6xl text-red-600 italic tracking-tighter drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]">+850</span>
+                </div>
+            </div>
+
+            <button onclick="resetToMain()" class="mt-20 px-24 py-5 bg-white text-black font-black italic text-2xl skew-btn shadow-[0_0_60px_rgba(255,255,255,0.1)] uppercase">返回主介面 (META-GAME)</button>
+        </div>
+
+        <!-- 全域按鍵提示列 -->
+        <div class="absolute bottom-0 left-0 right-0 h-10 bg-black/95 flex items-center justify-center gap-12 border-t border-white/5 z-50">
+            <div class="flex items-center gap-3 text-[10px] font-black text-stone-500 uppercase tracking-widest">
+                <span class="w-6 h-6 rounded-full border border-stone-700 flex items-center justify-center text-white text-xs">A</span>
+                <span>確認 / 選擇</span>
+            </div>
+            <div class="flex items-center gap-3 text-[10px] font-black text-stone-500 uppercase tracking-widest">
+                <span class="w-6 h-6 rounded-full border border-stone-700 flex items-center justify-center text-white text-xs">B</span>
+                <span>返回 / 取消</span>
+            </div>
+        </div>
+
+        <div class="op-hint">KEYBOARD: [ENTER/Z] = A, [BACKSPACE/X] = B</div>
+    </div>
+
+    <script>
+        // 武將數據庫
+        const HEROES = {
+            GuanYu: { 
+                name: "關羽 (雲長)", 
+                weapon: "伏龍大刀", 
+                skill: "武聖鑄鋒：淬鍊費用 -20%", 
+                initial: "關",
+                img: "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=400&auto=format&fit=crop"
+            },
+            ZhangFei: { 
+                name: "張飛 (翼德)", 
+                weapon: "蛇矛", 
+                skill: "鬥將磨鋒：切磋獲勝等級+1", 
+                initial: "張",
+                img: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=400&auto=format&fit=crop"
+            },
+            ZhaoYun: { 
+                name: "趙雲 (子龍)", 
+                weapon: "豪龍膽", 
+                skill: "龍膽先鋒：起始等級+2", 
+                initial: "趙",
+                img: "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=400&auto=format&fit=crop"
+            }
+        };
+
+        let currentHeroKey = "ZhaoYun";
+        let talentPoints = 14;
+        let currentExp = 1250;
+        let currentGold = 150;
+        let currentNode = 1;
+        let isBossBattle = false;
+
+        function changeScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            const target = document.getElementById(screenId);
+            if (target) target.classList.add('active');
+            
+            if(screenId === 'screen-main' || screenId === 'screen-talents') {
+                updatePointsDisplay();
+            }
+            if(screenId === 'screen-talents') {
+                document.getElementById('talent-detail').classList.add('hidden');
+            }
+        }
+
+        // --- 彈窗操作 ---
+        function openHeroModal() {
+            document.getElementById('hero-modal').classList.add('active');
+        }
+
+        function closeHeroModal() {
+            document.getElementById('hero-modal').classList.remove('active');
+            // 同步更新劇本準備介面的預覽
+            const hero = HEROES[currentHeroKey];
+            document.getElementById('prep-hero-name').innerText = hero.name;
+            document.getElementById('prep-hero-weapon').innerText = `Weapon: ${hero.weapon}`;
+            document.getElementById('prep-hero-preview').style.backgroundImage = `url('${hero.img}')`;
+        }
+
+        // 選擇武將邏輯 (在彈窗內)
+        function selectHero(heroKey) {
+            currentHeroKey = heroKey;
+            const hero = HEROES[heroKey];
+            
+            // 更新 Modal 內的 UI 選中狀態
+            document.querySelectorAll('.hero-avatar').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`hero-${heroKey}`).classList.add('selected');
+            
+            // 更新 Modal 資訊面板
+            document.getElementById('modal-hero-name').innerText = hero.name;
+            document.getElementById('modal-hero-weapon').innerText = `Weapon: ${hero.weapon}`;
+            document.getElementById('modal-hero-skill').innerText = hero.skill;
+
+            // 同步更新全域數據與局內頭像
+            document.getElementById('party-avatar-initial').innerText = hero.initial;
+            document.getElementById('battle-player-name').innerText = `${hero.name} (PLAYER)`;
+            document.getElementById('shop-weapon-name').innerText = hero.weapon;
+        }
+
+        function updatePointsDisplay() {
+            document.querySelectorAll('.talent-points-display').forEach(el => el.innerText = talentPoints);
+        }
+
+        function handleWin() {
+            if (isBossBattle) {
+                document.getElementById('stat-kills').innerText = Math.floor(Math.random() * 5 + 20);
+                changeScreen('screen-result');
+            } else {
+                addGold(50);
+                currentNode++;
+                document.getElementById('node-index').innerText = currentNode;
+                changeScreen('screen-map');
+            }
+        }
+
+        function handleA() {
+            // 如果彈窗開啟，A 鍵執行確認並關閉
+            if (document.getElementById('hero-modal').classList.contains('active')) {
+                closeHeroModal();
+                return;
+            }
+
+            const activeScreen = document.querySelector('.screen.active')?.id;
+            if (!activeScreen) return;
+
+            switch(activeScreen) {
+                case 'screen-main': changeScreen('screen-prep'); break;
+                case 'screen-prep': changeScreen('screen-map'); break;
+                case 'screen-map': battleNode(); break;
+                case 'screen-battle': handleWin(); break;
+                case 'screen-shop':
+                case 'screen-event': changeScreen('screen-map'); break;
+                case 'screen-result': resetToMain(); break;
+            }
+        }
+
+        function goBack() {
+            if (document.getElementById('hero-modal').classList.contains('active')) {
+                document.getElementById('hero-modal').classList.remove('active');
+                return;
+            }
+
+            const activeScreen = document.querySelector('.screen.active')?.id;
+            if(['screen-prep', 'screen-talents'].includes(activeScreen)) changeScreen('screen-main');
+            if(['screen-shop', 'screen-battle', 'screen-event'].includes(activeScreen)) changeScreen('screen-map');
+        }
+
+        function battleNode() {
+            isBossBattle = false;
+            document.getElementById('enemy-name').innerText = "黃巾小將";
+            document.getElementById('enemy-lv').innerText = "LV. 3";
+            document.getElementById('enemy-hp-bar').style.width = "50%";
+            document.getElementById('battle-title').innerText = "FIGHT!";
+            document.getElementById('battle-title').className = "text-huge font-black italic text-white drop-shadow-[0_0_50px_rgba(255,255,255,0.4)] skew-x-[-15deg] mb-12 animate-pulse";
+            document.getElementById('battle-bg').classList.add('grayscale');
+            changeScreen('screen-battle');
+        }
+
+        function bossNode() {
+            isBossBattle = true;
+            document.getElementById('enemy-name').innerText = "地公將軍 - 張寶";
+            document.getElementById('enemy-lv').innerText = "BOSS";
+            document.getElementById('enemy-hp-bar').style.width = "100%";
+            document.getElementById('battle-title').innerText = "BOSS BATTLE";
+            document.getElementById('battle-title').className = "text-huge font-black italic text-purple-500 drop-shadow-[0_0_50px_rgba(168,85,247,0.5)] skew-x-[-15deg] mb-12 animate-pulse";
+            document.getElementById('battle-bg').classList.remove('grayscale');
+            changeScreen('screen-battle');
+        }
+
+        function showTalentInfo(name, desc, cost, alreadyActive) {
+            const detail = document.getElementById('talent-detail');
+            detail.classList.remove('hidden');
+            document.getElementById('td-name').innerText = name;
+            document.getElementById('td-desc').innerText = desc;
+            document.getElementById('td-cost').innerText = cost;
+            
+            const btn = document.getElementById('td-btn');
+            if (alreadyActive) {
+                btn.innerText = "已啟用";
+                btn.classList.add('opacity-50');
+                btn.onclick = null;
+            } else if (talentPoints >= cost) {
+                btn.innerText = "確認升級";
+                btn.classList.remove('opacity-50');
+                btn.onclick = () => {
+                    talentPoints -= cost;
+                    updatePointsDisplay();
+                    detail.classList.add('hidden');
+                };
+            } else {
+                btn.innerText = "點數不足";
+                btn.classList.add('opacity-50');
+                btn.onclick = null;
+            }
+        }
+
+        function addGold(val) {
+            currentGold = Math.max(0, currentGold + val);
+            document.getElementById('gold-count').innerText = currentGold;
+            document.querySelectorAll('.shop-gold').forEach(el => el.innerText = currentGold);
+        }
+
+        function resetToMain() {
+            talentPoints += 2;
+            currentGold = 150;
+            currentNode = 1;
+            isBossBattle = false;
+            document.getElementById('node-index').innerText = currentNode;
+            document.getElementById('hp-player').style.width = "100%";
+            changeScreen('screen-main');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'z' || e.key === 'Enter') handleA();
+            if (e.key === 'x' || e.key === 'Backspace' || e.key === 'Escape') goBack();
+        });
+    </script>
+</body>
+</html>
