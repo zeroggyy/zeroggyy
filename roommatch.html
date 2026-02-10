@@ -7,8 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* 簡單的過場動畫 */
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 離開時的淡出動畫 */
+        .fade-out-exit { animation: fadeOut 0.8s forwards ease-in-out; pointer-events: none; }
+        @keyframes fadeOut { to { opacity: 0; filter: blur(5px); transform: scale(0.95); } }
         
         .player-card { transition: all 0.3s ease; }
         .player-card.active { border-color: #fbbf24; box-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
@@ -33,7 +37,7 @@
     <div class="fixed inset-0 scanline z-50 opacity-20 pointer-events-none"></div>
 
     <!-- 頁面容器 -->
-    <div id="app" class="relative w-full h-screen flex flex-col">
+    <div id="app" class="relative w-full h-screen flex flex-col transition-all duration-500">
 
         <!-- Header: 模擬遊戲頂部導航 -->
         <header class="h-16 bg-gray-800 border-b border-gray-700 flex items-center px-6 justify-between shrink-0">
@@ -50,7 +54,7 @@
         <!-- 主要內容區 (動態切換) -->
         <main class="flex-1 relative overflow-hidden bg-gray-900">
             
-            <!-- 0. 主選單 (Main Menu) - 新增入口 -->
+            <!-- 0. 主選單 (Main Menu) -->
             <section id="screen-menu" class="absolute inset-0 flex flex-col items-center justify-center fade-in bg-[url('https://placehold.co/1920x1080/111827/FFF?text=BG')] bg-cover bg-center">
                 <div class="absolute inset-0 bg-gray-900/80 backdrop-blur-sm"></div>
                 <div class="relative z-10 flex flex-col items-center">
@@ -72,11 +76,20 @@
                                 搜尋房間 (Find Room)
                             </span>
                         </button>
+                        
+                        <!-- 新增：回到主畫面按鈕 -->
+                        <button onclick="app.goToLobby()" class="group relative py-4 bg-gray-900/80 hover:bg-gray-800 border border-gray-700 text-gray-400 hover:text-white font-bold rounded shadow-lg transition-all transform active:scale-95 overflow-hidden mt-4">
+                            <div class="absolute inset-0 w-1 bg-gray-500 transition-all group-hover:w-full opacity-10"></div>
+                            <span class="relative z-10 flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                                回到主畫面 (Back to Lobby)
+                            </span>
+                        </button>
                     </div>
                 </div>
             </section>
 
-            <!-- 0.5 搜尋房間列表 (Search Room) - 新增 -->
+            <!-- 0.5 搜尋房間列表 (Search Room) -->
             <section id="screen-search" class="absolute inset-0 p-8 flex flex-col items-center fade-in hidden">
                 <div class="w-full max-w-5xl bg-gray-800 border border-gray-600 rounded-lg p-6 shadow-2xl flex flex-col h-full relative overflow-hidden">
                     <div class="flex justify-between items-center mb-6 relative z-10">
@@ -342,6 +355,17 @@
                 this.resetAllScreens();
                 document.getElementById('screen-search').classList.remove('hidden');
                 this.renderRoomList();
+            },
+            
+            // 新增：模擬切換回主大廳 (Back to Lobby URL)
+            goToLobby() {
+                // 1. 播放音效或視覺回饋 (此處使用 CSS class 觸發動畫)
+                document.getElementById('app').classList.add('fade-out-exit');
+                
+                // 2. 延遲後跳轉，模擬遊戲切場
+                setTimeout(() => {
+                    window.location.href = 'https://zeroggyy.github.io/zeroggyy/lobby.html';
+                }, 800); // 配合 CSS 動畫時間
             },
 
             resetAllScreens() {
