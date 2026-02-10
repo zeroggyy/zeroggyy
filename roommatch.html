@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGF 房間對戰流程模擬 (一般對戰)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 簡單的過場動畫 */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .player-card { transition: all 0.3s ease; }
+        .player-card.active { border-color: #fbbf24; box-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
+        
+        /* 模擬遊戲內的 CRT 風格掃描線 (裝飾用) */
+        .scanline {
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+
+        /* 滾動條樣式 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans overflow-hidden select-none">
+
+    <!-- 全局背景與裝飾 -->
+    <div class="fixed inset-0 scanline z-50 opacity-20 pointer-events-none"></div>
+
+    <!-- 頁面容器 -->
+    <div id="app" class="relative w-full h-screen flex flex-col">
+
+        <!-- Header: 模擬遊戲頂部導航 -->
+        <header class="h-16 bg-gray-800 border-b border-gray-700 flex items-center px-6 justify-between shrink-0">
+            <div class="flex items-center gap-4">
+                <div onclick="app.showMenu()" class="text-xl font-bold text-yellow-500 tracking-wider cursor-pointer hover:text-yellow-400">SGF ONLINE</div>
+                <div class="bg-gray-700 px-3 py-1 rounded text-xs text-gray-300">SERVER: ASIA-1</div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-sm text-gray-400">目前狀態: <span id="global-status" class="text-green-400">線上</span></div>
+                <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center border-2 border-indigo-400">YOU</div>
+            </div>
+        </header>
+
+        <!-- 主要內容區 (動態切換) -->
+        <main class="flex-1 relative overflow-hidden bg-gray-900">
+            
+            <!-- 0. 主選單 (Main Menu) - 新增入口 -->
+            <section id="screen-menu" class="absolute inset-0 flex flex-col items-center justify-center fade-in bg-[url('https://placehold.co/1920x1080/111827/FFF?text=BG')] bg-cover bg-center">
+                <div class="absolute inset-0 bg-gray-900/80 backdrop-blur-sm"></div>
+                <div class="relative z-10 flex flex-col items-center">
+                    <h1 class="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-400 to-yellow-600 mb-2 tracking-tighter italic transform -skew-x-12">ROOM MATCH</h1>
+                    <p class="text-gray-400 mb-12 tracking-widest text-sm">ONLINE BATTLE ARENA</p>
+                    
+                    <div class="flex flex-col gap-4 w-80">
+                        <button onclick="app.showCreateScreen()" class="group relative py-4 bg-indigo-900/80 hover:bg-indigo-600 border border-indigo-500 text-white font-bold rounded shadow-[0_0_20px_rgba(79,70,229,0.3)] transition-all transform active:scale-95 overflow-hidden">
+                            <div class="absolute inset-0 w-1 bg-yellow-500 transition-all group-hover:w-full opacity-20"></div>
+                            <span class="relative z-10 flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                建立房間 (Create Room)
+                            </span>
+                        </button>
+                        <button onclick="app.showSearchScreen()" class="group relative py-4 bg-gray-800/80 hover:bg-gray-700 border border-gray-600 text-white font-bold rounded shadow-lg transition-all transform active:scale-95 overflow-hidden">
+                            <div class="absolute inset-0 w-1 bg-white transition-all group-hover:w-full opacity-10"></div>
+                            <span class="relative z-10 flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                搜尋房間 (Find Room)
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 0.5 搜尋房間列表 (Search Room) - 新增 -->
+            <section id="screen-search" class="absolute inset-0 p-8 flex flex-col items-center fade-in hidden">
+                <div class="w-full max-w-5xl bg-gray-800 border border-gray-600 rounded-lg p-6 shadow-2xl flex flex-col h-full relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-6 relative z-10">
+                        <h2 class="text-2xl font-bold text-white border-l-4 border-yellow-500 pl-3">房間列表</h2>
+                        <button onclick="app.showMenu()" class="px-4 py-2 text-sm text-gray-400 hover:text-white border border-gray-600 rounded hover:bg-gray-700 transition">返回選單</button>
+                    </div>
+                    
+                    <!-- Search Bar -->
+                    <div class="flex gap-4 mb-4 relative z-10">
+                         <div class="flex-1 relative">
+                            <svg class="w-5 h-5 absolute left-3 top-2.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            <input type="text" placeholder="輸入房間 ID 或關鍵字..." class="w-full bg-gray-900 border border-gray-700 text-white pl-10 pr-3 py-2 rounded focus:border-indigo-500 focus:outline-none transition">
+                         </div>
+                         <button onclick="app.renderRoomList()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white flex items-center gap-2 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            重新整理
+                         </button>
+                    </div>
+
+                    <!-- Room List Header -->
+                    <div class="grid grid-cols-12 gap-4 text-xs font-bold text-gray-400 border-b border-gray-600 pb-3 px-4 bg-gray-900/50 rounded-t pt-3">
+                        <div class="col-span-1">ID</div>
+                        <div class="col-span-4">房間說明</div>
+                        <div class="col-span-2">房主</div>
+                        <div class="col-span-2">模式 / 規則</div>
+                        <div class="col-span-1 text-center">人數</div>
+                        <div class="col-span-1 text-center">Ping</div>
+                        <div class="col-span-1 text-right">操作</div>
+                    </div>
+
+                    <!-- Room List Body -->
+                    <div id="room-list-container" class="flex-1 overflow-y-auto space-y-1 bg-gray-900/30 p-1">
+                        <!-- JS Generated Content -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 1. 建立房間畫面 (Create Room) -->
+            <section id="screen-create" class="absolute inset-0 p-8 flex justify-center items-center fade-in hidden">
+                <div class="w-full max-w-2xl bg-gray-800 border border-gray-600 rounded-lg p-6 shadow-2xl relative">
+                    <h2 class="text-2xl font-bold mb-6 text-white border-l-4 border-yellow-500 pl-3">建立對戰房間</h2>
+                    
+                    <div class="space-y-6">
+                        <!-- 模式設定 -->
+                        <div class="bg-gray-900 p-4 rounded border border-gray-700">
+                            <h3 class="text-indigo-400 font-bold mb-3">1. 模式設定</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-gray-400 mb-1">對戰模式</label>
+                                    <select class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                                        <option>一般對戰 (General)</option>
+                                        <option disabled>錦標賽 (開發中)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-400 mb-1">輪替規則</label>
+                                    <select class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                                        <option>敗者輪替 (Loser Rotates)</option>
+                                        <option>勝者輪替 (Winner Rotates)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 房間設定 -->
+                        <div class="bg-gray-900 p-4 rounded border border-gray-700">
+                            <h3 class="text-indigo-400 font-bold mb-3">2. 房間設定</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-gray-400 mb-1">最大人數</label>
+                                    <select class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                                        <option>8人</option>
+                                        <option>16人</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-400 mb-1">房間說明</label>
+                                    <input type="text" id="create-room-desc" value="新手歡迎！隨意打" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-end gap-4">
+                        <button onclick="app.showMenu()" class="px-6 py-2 rounded text-gray-400 hover:text-white transition">取消</button>
+                        <button onclick="app.doCreateRoom()" class="px-8 py-2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded shadow-lg transition transform active:scale-95">開始建立</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. 房間大廳 (Lobby) -->
+            <section id="screen-lobby" class="absolute inset-0 flex hidden fade-in">
+                <!-- 左側：排隊與玩家列表 -->
+                <div class="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+                    <div class="p-4 border-b border-gray-700 bg-gray-800">
+                        <h3 class="text-sm text-gray-400 uppercase tracking-wider font-bold mb-2">Queue / Players</h3>
+                        <div class="text-xs text-yellow-500" id="lobby-rules-text">一般對戰 - 搶1勝 - 敗者輪替</div>
+                    </div>
+                    
+                    <div id="player-list" class="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-900/50">
+                        <!-- 玩家卡片將由 JS 生成 -->
+                    </div>
+
+                    <!-- 底部：自己操作區 -->
+                    <div class="p-3 bg-gray-900 border-t border-gray-700 space-y-2">
+                        <div class="flex gap-2">
+                             <button onclick="app.toggleRest()" id="btn-rest" class="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-xs rounded border border-gray-500 transition">
+                                暫時休息
+                            </button>
+                            <button onclick="app.moveToBack()" class="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-xs rounded border border-gray-500 transition">
+                                移至隊尾
+                            </button>
+                        </div>
+                        <button onclick="app.leaveRoom()" class="w-full py-2 bg-red-900/50 hover:bg-red-900 text-red-200 text-xs rounded border border-red-800 transition">
+                            離開房間
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 中間/右側：資訊與聊天 -->
+                <div class="flex-1 flex flex-col bg-gray-900 relative">
+                    <!-- 上方狀態條 -->
+                    <div class="h-12 bg-gray-800/80 border-b border-gray-700 flex items-center px-4 justify-between backdrop-blur">
+                        <div class="flex gap-4 text-sm">
+                            <span class="text-gray-400">房間 ID: <span class="text-white font-mono" id="lobby-room-id">ROOM-####</span></span>
+                            <span class="text-gray-400">說明: <span class="text-white" id="lobby-room-desc">...</span></span>
+                        </div>
+                        <div class="text-xs text-gray-500">連線品質: <span class="text-green-400">50ms</span></div>
+                    </div>
+
+                    <!-- 中間顯示區：對戰資訊 or 觀戰 -->
+                    <div class="flex-1 flex items-center justify-center relative p-10 bg-black/20">
+                        <div id="match-status-display" class="text-center">
+                            <div class="text-6xl text-gray-700 font-black tracking-tighter opacity-50 select-none">WAITING</div>
+                            <div class="text-sm text-gray-500 mt-2">等待挑戰者...</div>
+                        </div>
+                    </div>
+
+                    <!-- 聊天室 -->
+                    <div class="h-1/3 min-h-[200px] bg-gray-800 border-t border-gray-700 flex flex-col">
+                        <div id="chat-log" class="flex-1 overflow-y-auto p-4 space-y-1 text-sm font-mono text-gray-300">
+                            <!-- Chat content -->
+                        </div>
+                        <div class="p-2 bg-gray-900 flex gap-2">
+                            <button onclick="app.sendChat('大家好！')" class="px-3 py-1 bg-gray-700 rounded text-xs hover:bg-gray-600">打招呼</button>
+                            <button onclick="app.sendChat('好強！')" class="px-3 py-1 bg-gray-700 rounded text-xs hover:bg-gray-600">稱讚</button>
+                            <button onclick="app.sendChat('再來一場！')" class="px-3 py-1 bg-gray-700 rounded text-xs hover:bg-gray-600">再戰</button>
+                            <button class="ml-auto px-3 py-1 bg-indigo-600 rounded text-xs hover:bg-indigo-500">貼圖</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. 對戰確認視窗 (Popup Overlay) -->
+            <div id="popup-confirm" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                <div class="w-96 bg-gray-800 border-2 border-yellow-500 rounded-lg p-6 shadow-[0_0_30px_rgba(234,179,8,0.3)] text-center relative overflow-hidden">
+                    <!-- 倒數進度條 -->
+                    <div class="absolute top-0 left-0 h-1 bg-yellow-500 transition-all duration-[10000ms] ease-linear w-full" id="confirm-timer-bar"></div>
+                    
+                    <h2 class="text-2xl font-bold text-white mb-2">對戰準備確認</h2>
+                    <p class="text-gray-400 text-sm mb-6">對手已就位，準備開始對戰？</p>
+                    
+                    <div class="text-5xl font-mono font-bold text-yellow-400 mb-6" id="countdown-text">10</div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-1 items-center">
+                            <div id="p1-status" class="text-xs text-gray-500">P1</div>
+                            <button onclick="app.confirmMatch()" id="btn-confirm-match" class="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded animate-pulse">
+                                按下 OK
+                            </button>
+                        </div>
+                        <div class="flex flex-col gap-1 items-center">
+                            <div class="text-xs text-gray-500">P2</div>
+                            <div id="p2-status-display" class="w-full py-3 bg-gray-700 text-gray-400 rounded border border-gray-600 flex items-center justify-center">
+                                等待中...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 對戰/觀戰中畫面 (In Game) -->
+            <section id="screen-game" class="absolute inset-0 bg-black z-40 hidden flex flex-col items-center justify-center">
+                <div class="text-yellow-500 text-4xl font-black italic tracking-widest animate-pulse">FIGHTING...</div>
+                <div class="mt-8 flex items-center gap-12">
+                    <div class="text-center">
+                        <div class="w-24 h-24 bg-indigo-600 rounded-full mb-2 border-4 border-white flex items-center justify-center text-2xl font-bold">1P</div>
+                        <div class="text-xl font-bold" id="game-p1-name">YOU</div>
+                    </div>
+                    <div class="text-3xl font-mono text-red-500">VS</div>
+                    <div class="text-center">
+                        <div class="w-24 h-24 bg-red-600 rounded-full mb-2 border-4 border-gray-600 flex items-center justify-center text-2xl font-bold">2P</div>
+                        <div class="text-xl font-bold" id="game-p2-name">OPPONENT</div>
+                    </div>
+                </div>
+                
+                <!-- 模擬戰鬥結束控制 -->
+                <div class="mt-16 p-4 bg-gray-800 rounded border border-gray-600">
+                    <p class="text-xs text-gray-400 mb-2 text-center">[開發者測試] 模擬戰鬥結果</p>
+                    <div class="flex gap-4">
+                        <button onclick="app.endGame('p1')" class="px-4 py-2 bg-indigo-600 rounded hover:bg-indigo-500">1P (左方) 獲勝</button>
+                        <button onclick="app.endGame('p2')" class="px-4 py-2 bg-red-600 rounded hover:bg-red-500">2P (右方) 獲勝</button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 5. 結算畫面 (Result) -->
+            <div id="screen-result" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur">
+                <h1 id="result-title" class="text-6xl font-black text-yellow-500 mb-4 transform scale-110">WIN</h1>
+                <p class="text-gray-400 mb-8">是否再戰?</p>
+                <div class="flex gap-6">
+                    <button onclick="app.rematch()" class="px-8 py-3 bg-green-600 rounded text-lg font-bold hover:bg-green-500">再戰 (Rematch)</button>
+                    <button onclick="app.backToLobby()" class="px-8 py-3 bg-gray-700 rounded text-lg font-bold hover:bg-gray-600">返回房間</button>
+                </div>
+                <div class="mt-4 text-xs text-red-400" id="rematch-timer">對手已離開... (模擬)</div>
+            </div>
+
+        </main>
+
+        <!-- 測試用控制台 (Floating Debug Panel) -->
+        <div class="fixed bottom-4 right-4 p-4 bg-gray-800 border border-gray-600 rounded shadow-xl z-50 opacity-90 text-xs">
+            <h4 class="font-bold text-yellow-500 mb-2 border-b border-gray-600 pb-1">[測試用] 模擬控制台</h4>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="app.simJoin()" class="bg-blue-900 text-blue-200 px-2 py-1 rounded hover:bg-blue-800">+ 路人加入</button>
+                <button onclick="app.simLeave()" class="bg-red-900 text-red-200 px-2 py-1 rounded hover:bg-red-800">- 路人離開</button>
+                <button onclick="app.simP2Confirm()" class="bg-green-900 text-green-200 px-2 py-1 rounded hover:bg-green-800">模擬 P2 按 OK</button>
+            </div>
+            <div class="mt-2 text-gray-500 text-[10px]">
+                點擊上方按鈕來模擬多人互動情境
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Core Logic ---
+        const app = {
+            state: 'INIT', 
+            myId: 'user_me',
+            players: [], 
+            queue: [], 
+            timerInterval: null,
+            roomInfo: { id: '', desc: '', isHost: false },
+
+            init() {
+                // App Entry Point
+                this.showMenu();
+            },
+
+            // --- UI Transitions ---
+            showMenu() {
+                this.state = 'MENU';
+                this.resetAllScreens();
+                document.getElementById('screen-menu').classList.remove('hidden');
+            },
+
+            showCreateScreen() {
+                this.resetAllScreens();
+                document.getElementById('screen-create').classList.remove('hidden');
+            },
+
+            showSearchScreen() {
+                this.resetAllScreens();
+                document.getElementById('screen-search').classList.remove('hidden');
+                this.renderRoomList();
+            },
+
+            resetAllScreens() {
+                // Helper to hide all main sections
+                const screens = ['screen-menu', 'screen-create', 'screen-search', 'screen-lobby', 'screen-game'];
+                screens.forEach(id => document.getElementById(id).classList.add('hidden'));
+                // Also hide overlays
+                document.getElementById('popup-confirm').classList.add('hidden');
+                document.getElementById('screen-result').classList.add('hidden');
+            },
+
+            // --- Feature: Search & Join ---
+            renderRoomList() {
+                const container = document.getElementById('room-list-container');
+                container.innerHTML = '';
+                
+                // Mock Data
+                const mockRooms = [
+                    { id: '1001', desc: '新手練習房', host: 'RyuPlayer', mode: '一般對戰', count: 3, max: 8, ping: 45 },
+                    { id: '1002', desc: '高手進來打', host: 'Daigo', mode: '一般對戰', count: 7, max: 16, ping: 120 },
+                    { id: '1003', desc: '測試房間請勿入', host: 'Dev', mode: '一般對戰', count: 1, max: 8, ping: 15 },
+                    { id: '1004', desc: '週末交流會', host: 'Community', mode: '一般對戰', count: 5, max: 16, ping: 60 },
+                    { id: '1005', desc: '隨便玩玩', host: 'Gamer123', mode: '一般對戰', count: 2, max: 8, ping: 55 },
+                ];
+
+                mockRooms.forEach(room => {
+                    const el = document.createElement('div');
+                    el.className = "grid grid-cols-12 gap-4 items-center p-4 bg-gray-800 border border-gray-700 rounded hover:bg-gray-750 transition mb-2 group hover:border-gray-500";
+                    el.innerHTML = `
+                        <div class="col-span-1 text-gray-400 font-mono text-xs">#${room.id}</div>
+                        <div class="col-span-4 font-bold text-white truncate">${room.desc}</div>
+                        <div class="col-span-2 text-sm text-indigo-300 truncate">${room.host}</div>
+                        <div class="col-span-2 text-xs text-gray-400">${room.mode}</div>
+                        <div class="col-span-1 text-center text-sm text-gray-300">${room.count}/${room.max}</div>
+                        <div class="col-span-1 text-center text-xs ${room.ping < 50 ? 'text-green-400' : 'text-yellow-400'}">${room.ping}ms</div>
+                        <div class="col-span-1 text-right">
+                            <button onclick="app.joinRoom('${room.id}', '${room.desc}', '${room.host}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded shadow transition">
+                                加入
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(el);
+                });
+            },
+
+            joinRoom(id, desc, hostName) {
+                // Initialize as Guest
+                this.roomInfo = { id: id, desc: desc, isHost: false };
+                
+                // Mock players in that room
+                this.players = [
+                    { id: 'host_01', name: hostName, avatarColor: 'bg-red-600', status: 'IDLE', wins: 5, isResting: false }, // Host
+                    { id: 'p_02', name: 'Player_Two', avatarColor: 'bg-green-600', status: 'IDLE', wins: 1, isResting: false },
+                    { id: 'user_me', name: 'YOU (Guest)', avatarColor: 'bg-indigo-600', status: 'IDLE', wins: 0, isResting: false } // Me
+                ];
+                
+                // Setup Queue: Host is P1, P2 is P2, I am at back
+                this.queue = ['host_01', 'p_02', 'user_me'];
+                
+                this.enterLobby();
+                this.addSystemMsg(`您已加入房間 #${id}。`);
+            },
+
+            // --- Feature: Create Room ---
+            doCreateRoom() {
+                const desc = document.getElementById('create-room-desc').value;
+                const id = 'ROOM-' + Math.floor(Math.random() * 9000 + 1000);
+                
+                // Initialize as Host
+                this.roomInfo = { id: id, desc: desc, isHost: true };
+                this.players = [{ id: 'user_me', name: 'YOU (Host)', avatarColor: 'bg-indigo-600', status: 'IDLE', wins: 0, isResting: false }];
+                this.queue = ['user_me'];
+                
+                this.enterLobby();
+                this.addSystemMsg(`房間建立成功。`);
+            },
+
+            enterLobby() {
+                this.state = 'LOBBY';
+                this.resetAllScreens();
+                document.getElementById('screen-lobby').classList.remove('hidden');
+                
+                // Update Header Info
+                document.getElementById('lobby-room-id').innerText = this.roomInfo.id;
+                document.getElementById('lobby-room-desc').innerText = this.roomInfo.desc;
+                
+                // Reset Chat
+                document.getElementById('chat-log').innerHTML = '';
+                
+                this.renderLobby();
+            },
+
+            leaveRoom() {
+                if(confirm("確定要離開房間嗎？")) {
+                    this.showMenu();
+                }
+            },
+
+            // --- Phase 2: Lobby Logic ---
+            simJoin() {
+                const id = 'user_' + Math.floor(Math.random() * 10000);
+                const names = ['Ken', 'Ryu', 'ChunLi', 'Guile', 'Luke', 'Jamie'];
+                const name = names[Math.floor(Math.random() * names.length)] + '_' + Math.floor(Math.random() * 99);
+                
+                this.players.push({
+                    id: id,
+                    name: name,
+                    avatarColor: 'bg-gray-600',
+                    status: 'IDLE',
+                    wins: 0,
+                    isResting: false
+                });
+                
+                // Add to queue logic: Auto to back
+                this.queue.push(id);
+                
+                this.addSystemMsg(`${name} 加入了房間。`);
+                this.renderLobby();
+                this.checkMatchStart();
+            },
+
+            simLeave() {
+                // If I am alone, do nothing
+                if (this.players.length <= 1) return;
+                
+                // Remove someone who is NOT me
+                const others = this.players.filter(p => p.id !== 'user_me');
+                if(others.length === 0) return;
+                
+                const leaver = others[others.length - 1]; 
+                
+                this.players = this.players.filter(p => p.id !== leaver.id);
+                this.queue = this.queue.filter(id => id !== leaver.id);
+                this.addSystemMsg(`${leaver.name} 離開了房間。`);
+                this.renderLobby();
+            },
+
+            toggleRest() {
+                const me = this.players.find(p => p.id === this.myId);
+                if(!me) return;
+                me.isResting = !me.isResting;
+                document.getElementById('btn-rest').innerText = me.isResting ? "解除休息" : "暫時休息";
+                document.getElementById('btn-rest').classList.toggle('bg-yellow-700', me.isResting);
+                
+                this.renderLobby();
+                this.checkMatchStart();
+            },
+
+            moveToBack() {
+                // Remove self from queue and push to end
+                const index = this.queue.indexOf(this.myId);
+                if (index > -1) {
+                    this.queue.splice(index, 1);
+                    this.queue.push(this.myId);
+                    this.addSystemMsg("你移動到了隊列尾端。");
+                    this.renderLobby();
+                }
+            },
+
+            renderLobby() {
+                const list = document.getElementById('player-list');
+                list.innerHTML = '';
+
+                // Render Queue
+                this.queue.forEach((playerId, index) => {
+                    const p = this.players.find(pl => pl.id === playerId);
+                    if (!p) return;
+
+                    // Determine Role visuals
+                    let roleTag = `<span class="text-xs text-gray-500 ml-auto font-mono">#${index+1}</span>`;
+                    let cardClass = "border-gray-700 bg-gray-800";
+
+                    if (index === 0) {
+                        roleTag = `<span class="bg-yellow-600 text-white text-[10px] px-1 rounded ml-auto">1P</span>`;
+                        cardClass = "border-yellow-600 bg-gray-800/80";
+                    } else if (index === 1) {
+                        roleTag = `<span class="bg-red-600 text-white text-[10px] px-1 rounded ml-auto">2P</span>`;
+                        cardClass = "border-red-600 bg-gray-800/80";
+                    }
+
+                    if (p.isResting) {
+                        roleTag = `<span class="text-gray-500 italic ml-auto text-xs">休息中 zZZ</span>`;
+                        cardClass = "opacity-50 border-gray-800";
+                    }
+
+                    const isMe = p.id === this.myId;
+                    const isHost = (index === 0 && this.roomInfo.isHost) || (p.id.includes('host') || p.id === 'user_me' && this.roomInfo.isHost);
+                    // Simple host check logic for visual: assumed creator or first mocked host
+
+                    const html = `
+                        <div class="player-card flex items-center p-2 border rounded mb-2 ${cardClass} ${isMe ? 'bg-indigo-900/40' : ''}">
+                            <div class="w-8 h-8 ${p.avatarColor} rounded-full flex items-center justify-center text-xs font-bold mr-3 relative shadow-inner">
+                                ${p.name.substring(0,1)}
+                                ${(p.id.includes('host') || (this.roomInfo.isHost && p.id === 'user_me')) ? '<div class="absolute -top-1 -left-1 text-[8px] bg-yellow-400 text-black px-1 rounded font-bold shadow">HOST</div>' : ''}
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold ${isMe ? 'text-indigo-300' : 'text-gray-300'}">${p.name} ${isMe ? '(You)' : ''}</span>
+                                <span class="text-[10px] text-gray-500">Wins: ${p.wins} | Rank: Silver</span>
+                            </div>
+                            ${roleTag}
+                        </div>
+                    `;
+                    list.innerHTML += html;
+                });
+                
+                // Update Main Display Text
+                const display = document.getElementById('match-status-display');
+                if(this.queue.length < 2) {
+                     display.innerHTML = `<div class="text-4xl text-gray-700 font-bold">WAITING</div><div class="text-sm text-gray-500">人數不足 (需 2 人)</div>`;
+                } else {
+                     const p1 = this.players.find(p => p.id === this.queue[0]);
+                     const p2 = this.players.find(p => p.id === this.queue[1]);
+                     
+                     if (p1 && p2) {
+                        display.innerHTML = `
+                            <div class="flex items-center gap-4 text-gray-400">
+                                <span class="text-yellow-500 font-bold text-2xl">${p1.name}</span> 
+                                <span class="text-xs text-gray-600">VS</span> 
+                                <span class="text-red-500 font-bold text-2xl">${p2.name}</span>
+                            </div>
+                            <div class="text-xs mt-4 text-gray-500 animate-pulse">即將開始對戰...</div>
+                        `;
+                     }
+                }
+            },
+
+            // --- Phase 3: Match Check Logic ---
+            checkMatchStart() {
+                if (this.state !== 'LOBBY') return;
+                const p1Id = this.queue[0];
+                const p2Id = this.queue[1];
+                if (!p1Id || !p2Id) return;
+                const p1 = this.players.find(p => p.id === p1Id);
+                const p2 = this.players.find(p => p.id === p2Id);
+                if (p1.isResting || p2.isResting) return;
+
+                // TRIGGER POPUP
+                this.state = 'CONFIRM';
+                this.startConfirmation(p1, p2);
+            },
+
+            startConfirmation(p1, p2) {
+                const popup = document.getElementById('popup-confirm');
+                popup.classList.remove('hidden');
+                
+                document.getElementById('countdown-text').innerText = "10";
+                document.getElementById('confirm-timer-bar').style.width = "100%";
+                document.getElementById('p1-status').innerText = `P1 (${p1.name})`;
+                
+                // If I am P2, show button enabled. If I am spectator, hide confirm button.
+                const btn = document.getElementById('btn-confirm-match');
+                const isParticipant = (this.myId === p1.id || this.myId === p2.id);
+                
+                if (!isParticipant) {
+                    btn.disabled = true;
+                    btn.innerText = "觀戰等待中...";
+                    btn.className = "w-full py-3 bg-gray-600 cursor-not-allowed text-gray-400 font-bold rounded";
+                } else {
+                    btn.disabled = false;
+                    btn.innerText = "按下 OK";
+                    btn.className = "w-full py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded animate-pulse";
+                }
+                
+                // Status Texts
+                document.getElementById('p2-status-display').innerText = "等待中...";
+                document.getElementById('p2-status-display').className = "w-full py-3 bg-gray-700 text-gray-400 rounded border border-gray-600 flex items-center justify-center";
+
+                let count = 10;
+                this.matchConfirmed = { p1: false, p2: false };
+                
+                // Auto confirm if P1 is AI (mock logic: if P1 is not me, P1 is AI)
+                if (p1.id !== this.myId) {
+                    setTimeout(() => { this.matchConfirmed.p1 = true; }, 1500);
+                }
+
+                setTimeout(() => { document.getElementById('confirm-timer-bar').style.width = "0%"; }, 100);
+
+                this.timerInterval = setInterval(() => {
+                    count--;
+                    document.getElementById('countdown-text').innerText = count;
+                    
+                    // Auto check logic
+                    if (this.matchConfirmed.p1 && this.matchConfirmed.p2) {
+                        clearInterval(this.timerInterval);
+                        this.startGame();
+                        return;
+                    }
+
+                    if (count <= 0) {
+                        clearInterval(this.timerInterval);
+                        this.handleConfirmTimeout();
+                    }
+                }, 1000);
+            },
+
+            confirmMatch() {
+                const btn = document.getElementById('btn-confirm-match');
+                btn.innerText = "已就緒 (READY)";
+                btn.className = "w-full py-3 bg-yellow-600 text-white font-bold rounded";
+                btn.disabled = true;
+
+                if(this.queue[0] === this.myId) this.matchConfirmed.p1 = true;
+                if(this.queue[1] === this.myId) this.matchConfirmed.p2 = true;
+            },
+
+            simP2Confirm() {
+                // Mock P2 confirming
+                if (this.state !== 'CONFIRM') return;
+                
+                // Only if P2 is NOT ME (otherwise use button)
+                if (this.queue[1] === this.myId) {
+                     this.confirmMatch();
+                     return;
+                }
+                
+                this.matchConfirmed.p2 = true;
+                const display = document.getElementById('p2-status-display');
+                display.innerText = "已就緒 (READY)";
+                display.className = "w-full py-3 bg-yellow-600 text-white font-bold rounded border border-yellow-500 flex items-center justify-center";
+            },
+
+            handleConfirmTimeout() {
+                alert("有人未確認！(模擬：未確認者移至隊尾)");
+                document.getElementById('popup-confirm').classList.add('hidden');
+                this.state = 'LOBBY';
+                // Just shuffle queue for demo
+                this.queue.push(this.queue.shift()); 
+                this.renderLobby();
+            },
+
+            // --- Phase 4: In Game ---
+            startGame() {
+                document.getElementById('popup-confirm').classList.add('hidden');
+                this.state = 'GAME';
+                this.resetAllScreens(); // Safety
+                document.getElementById('screen-game').classList.remove('hidden');
+                
+                const p1 = this.players.find(p => p.id === this.queue[0]);
+                const p2 = this.players.find(p => p.id === this.queue[1]);
+                
+                document.getElementById('game-p1-name').innerText = p1.name;
+                document.getElementById('game-p2-name').innerText = p2.name;
+                
+                this.addSystemMsg(`對戰開始: ${p1.name} VS ${p2.name}`);
+            },
+
+            // --- Phase 5: Result & Rotation ---
+            endGame(winnerRole) {
+                // winnerRole: 'p1' or 'p2'
+                this.state = 'RESULT';
+                document.getElementById('screen-game').classList.add('hidden');
+                const resultScreen = document.getElementById('screen-result');
+                resultScreen.classList.remove('hidden');
+
+                const p1Id = this.queue[0];
+                const p2Id = this.queue[1];
+                const winnerId = winnerRole === 'p1' ? p1Id : p2Id;
+                
+                // Determine title
+                if (winnerId === this.myId) {
+                    document.getElementById('result-title').innerText = "YOU WIN";
+                    document.getElementById('result-title').className = "text-6xl font-black text-yellow-500 mb-4 transform scale-110";
+                } else if (p1Id === this.myId || p2Id === this.myId) {
+                    document.getElementById('result-title').innerText = "YOU LOSE";
+                    document.getElementById('result-title').className = "text-6xl font-black text-gray-500 mb-4";
+                } else {
+                    document.getElementById('result-title').innerText = "FINISH"; // Spectator
+                    document.getElementById('result-title').className = "text-6xl font-black text-white mb-4";
+                }
+
+                this.lastMatchResult = { winner: winnerId, loser: winnerId === p1Id ? p2Id : p1Id };
+                document.getElementById('rematch-timer').innerText = "等待對手選擇...";
+            },
+
+            backToLobby() {
+                const { winner, loser } = this.lastMatchResult;
+                
+                const wPlayer = this.players.find(p => p.id === winner);
+                if(wPlayer) wPlayer.wins++;
+                
+                // Logic: Winner stays index 0, Loser goes to end.
+                // 1. Remove both
+                this.queue = this.queue.filter(id => id !== winner && id !== loser);
+                // 2. Add winner front
+                this.queue.unshift(winner);
+                // 3. Add loser back
+                this.queue.push(loser);
+
+                this.enterLobby();
+                this.addSystemMsg("對戰結束，返回大廳。");
+                
+                // Auto check next
+                setTimeout(() => this.checkMatchStart(), 1500);
+            },
+            
+            rematch() {
+                alert("模擬：對方拒絕再戰 (返回房間)");
+                this.backToLobby();
+            },
+
+            // --- Chat ---
+            sendChat(msg) {
+                if(!msg) return;
+                const log = document.getElementById('chat-log');
+                const time = new Date().toTimeString().split(' ')[0].substring(0,5);
+                log.innerHTML += `<div><span class="text-gray-500">[${time}]</span> <span class="text-indigo-400">YOU:</span> ${msg}</div>`;
+                log.scrollTop = log.scrollHeight;
+            },
+            
+            addSystemMsg(msg) {
+                const log = document.getElementById('chat-log');
+                log.innerHTML += `<div><span class="text-yellow-500/50 italic">系統: ${msg}</span></div>`;
+                log.scrollTop = log.scrollHeight;
+            }
+        };
+
+        // Start
+        app.init();
+
+    </script>
+</body>
+</html>
