@@ -294,7 +294,7 @@
     <!-- 模擬遊戲啟動遮罩 -->
     <div id="launchOverlay">
         <div class="flex flex-col items-center gap-4">
-            <div class="text-[10px] font-black text-[#39FF14] tracking-[0.5em] uppercase animate-pulse">Initializing Roguelike Mode</div>
+            <div id="launchStatusText" class="text-[10px] font-black text-[#39FF14] tracking-[0.5em] uppercase animate-pulse">Initializing System</div>
             <div class="loading-bar"></div>
         </div>
     </div>
@@ -523,8 +523,11 @@
                     div.className = `menu-item text-5xl font-black uppercase ${idx === 0 ? 'active' : ''}`;
                     div.innerText = it;
                     div.onclick = () => {
+                        // 處理跳轉邏輯
                         if (it === 'Roguelike') {
-                            launchGame('https://zeroggyy.github.io/zeroggyy/roguelike.html');
+                            launchGame('https://zeroggyy.github.io/zeroggyy/roguelike.html', 'Initializing Roguelike Mode');
+                        } else if (it === '建立房間') {
+                            launchGame('https://zeroggyy.github.io/zeroggyy/roommatch.html', 'Creating Battle Lobby');
                         } else {
                             document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
                             div.classList.add('active');
@@ -556,15 +559,18 @@
         }
 
         // 直接開啟網頁跳轉模擬
-        function launchGame(url) {
+        function launchGame(url, statusMsg) {
             const overlay = document.getElementById('launchOverlay');
+            const statusText = document.getElementById('launchStatusText');
+            
+            statusText.innerText = statusMsg;
             overlay.classList.add('active');
             
-            // 更新狀態列
-            document.getElementById('descText').innerText = "BOOTING: ROGUELIKE_MODE.EXE";
+            // 更新狀態列文字
+            document.getElementById('descText').innerText = `BOOTING: ${statusMsg.split(' ').join('_').toUpperCase()}.EXE`;
             document.getElementById('descText').style.color = "#39FF14";
 
-            // 模擬載入 1 秒後進行跳轉
+            // 模擬載入 1.2 秒後進行跳轉
             setTimeout(() => {
                 window.location.href = url;
             }, 1200);
