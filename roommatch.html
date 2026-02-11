@@ -736,7 +736,6 @@
 
             startConfirmation(p1, p2) {
                 const popup = document.getElementById('popup-confirm');
-                popup.classList.remove('hidden');
                 
                 document.getElementById('countdown-text').innerText = "10";
                 document.getElementById('confirm-timer-bar').style.width = "100%";
@@ -745,14 +744,15 @@
                 const btn = document.getElementById('btn-confirm-match');
                 const isParticipant = (this.myId === p1.id || this.myId === p2.id);
                 
-                if (!isParticipant) {
-                    btn.disabled = true;
-                    btn.innerText = "觀戰等待中...";
-                    btn.className = "w-full py-3 bg-gray-600 cursor-not-allowed text-gray-400 font-bold rounded";
-                } else {
+                // 只有當事人才會顯示確認視窗
+                if (isParticipant) {
+                    popup.classList.remove('hidden');
                     btn.disabled = false;
                     btn.innerText = "按下 OK";
                     btn.className = "w-full py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded animate-pulse";
+                } else {
+                    // 觀戰者：不顯示視窗，但邏輯照跑 (等待遊戲開始)
+                    // btn.disabled = true; // 不需要設定，因為根本看不到
                 }
                 
                 document.getElementById('p2-status-display').innerText = "等待中...";
@@ -769,7 +769,10 @@
 
                 this.timerInterval = setInterval(() => {
                     count--;
-                    document.getElementById('countdown-text').innerText = count;
+                    // 只有看得到視窗的人才需要更新倒數文字 (雖然更新隱藏元素也沒錯)
+                    if(isParticipant) {
+                        document.getElementById('countdown-text').innerText = count;
+                    }
                     
                     if (this.matchConfirmed.p1 && this.matchConfirmed.p2) {
                         clearInterval(this.timerInterval);
@@ -807,7 +810,8 @@
             },
 
             handleConfirmTimeout() {
-                alert("有人未確認！(模擬：未確認者移至隊尾)");
+                // 改為系統訊息，不使用 alert 干擾觀戰者
+                this.addSystemMsg("對戰取消：有人未確認 (已移至隊尾)");
                 document.getElementById('popup-confirm').classList.add('hidden');
                 this.state = 'LOBBY';
                 this.queue.push(this.queue.shift()); 
